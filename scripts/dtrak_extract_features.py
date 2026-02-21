@@ -182,7 +182,6 @@ def get_condition_kwargs(diffusion, metadata: List[Dict[str, Any]], device: torc
             "prepend_cond": None,
             "prepend_cond_mask": None,
         }
-    diffusion.conditioner.to(device)
     conditioning = diffusion.conditioner(metadata, device)
     model_kwargs = diffusion.get_conditioning_inputs(conditioning)
     return {
@@ -383,15 +382,6 @@ def main() -> None:
 
         cond_kwargs = get_condition_kwargs(diffusion, metadata_list, device)
 
-        # Offload conditioner & pretransform to CPU — they are no longer needed
-        # until the next batch.  This frees ~1-2 GiB of GPU memory for the
-        # vmap+grad computation that follows.
-        if diffusion.conditioner is not None:
-            diffusion.conditioner.to("cpu")
-        if diffusion.pretransform is not None:
-            diffusion.pretransform.to("cpu")
-        torch.cuda.empty_cache()
-
         cond_kw = {
             "cross_attn_cond": cond_kwargs["cross_attn_cond"],
             "cross_attn_mask": cond_kwargs["cross_attn_mask"],
@@ -403,7 +393,16 @@ def main() -> None:
 
         batch_size_actual = diffusion_input.shape[0]
 
-        emb = None
+        # Pre-allocate emb on GPU — accumulate gradients in-place across
+        # timesteps to avoid any extra copies or CPU transfers.
+        emb = torch.zeros(batch_size_actual, grad_dim, device=device)
+
+        # Disable grad for all params once; re-enable only for selected ones.
+        for p in model.parameters():
+            p.requires_grad_(False)
+        for p in param_list:
+            p.requires_grad_(True)
+
         _t_batch = _time.time()
         for t_idx, timestep_int in enumerate(selected_timesteps):
             timestep_seed = args.e_seed * args.num_train_steps + timestep_int
@@ -437,22 +436,12 @@ def main() -> None:
                 raise ValueError(f"Unsupported diffusion objective: {diffusion_objective}")
 
             # --- Per-sample gradient via standard backward + checkpointing ----
-            sample_grads_list = []
             _t_ts = _time.time()
             for si in range(batch_size_actual):
-                # Build per-sample kwargs (slice batch dim)
                 fwd_kwargs = {"cfg_dropout_prob": args.cfg_dropout_prob}
-                # NOTE: we do NOT set use_checkpointing=False here, so the
-                # transformer WILL use gradient checkpointing → huge memory saving
                 for k, v in cond_kw.items():
                     if v is not None:
                         fwd_kwargs[k] = v[si : si + 1]
-
-                # Enable grad only for selected params
-                for p in model.parameters():
-                    p.requires_grad_(False)
-                for p in param_list:
-                    p.requires_grad_(True)
 
                 prediction = model(
                     noised_inputs[si : si + 1],
@@ -464,35 +453,26 @@ def main() -> None:
                 loss = loss_from_prediction(prediction, targets[si : si + 1], args.f)
 
                 grads = torch.autograd.grad(loss, param_list)
-                # Flatten to a single vector on CPU immediately
-                flat = torch.cat([g.detach().flatten().cpu() for g in grads])
-                sample_grads_list.append(flat)
-
-                # Free graph
+                # Accumulate directly into pre-allocated emb (in-place, no extra tensor)
+                offset = 0
+                for g in grads:
+                    numel = g.numel()
+                    emb[si, offset : offset + numel].add_(g.detach().flatten())
+                    offset += numel
                 del prediction, loss, grads
-
-            per_sample_grads = torch.stack(sample_grads_list)  # [B, grad_dim] on CPU
-            del sample_grads_list
-            torch.cuda.empty_cache()
 
             _elapsed_ts = _time.time() - _t_ts
             print(f"  batch {batch_idx} | timestep {t_idx+1}/{len(selected_timesteps)} "
                   f"(t={timestep_int}) | {batch_size_actual} samples | {_elapsed_ts:.1f}s",
                   flush=True)
 
-            emb = per_sample_grads if emb is None else emb + per_sample_grads
-
-        emb = emb / float(len(selected_timesteps))
-        # Move back to GPU for projection.
+        emb.div_(float(len(selected_timesteps)))
         # CudaProjector (fast_jl) requires batch size to be a multiple of 16.
-        # Pad if necessary, project, then slice back.
-        emb_gpu = emb.to(device)
-        actual_bs = emb_gpu.shape[0]
+        actual_bs = emb.shape[0]
         if actual_bs % 16 != 0:
             pad_bs = ((actual_bs // 16) + 1) * 16
-            emb_gpu = F.pad(emb_gpu, (0, 0, 0, pad_bs - actual_bs))
-        emb = projector.project(emb_gpu, model_id=args.model_id)[:actual_bs]
-        del emb_gpu
+            emb = F.pad(emb, (0, 0, 0, pad_bs - actual_bs))
+        emb = projector.project(emb, model_id=args.model_id)[:actual_bs]
         if used_dim != args.proj_dim:
             emb[:, used_dim:] = 0
 

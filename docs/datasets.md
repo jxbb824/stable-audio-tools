@@ -25,6 +25,31 @@ This will load all of the compatible audio files from the provided directory and
 }
 ```
 
+### Optional exclusion list
+You can optionally provide `exclude_paths_file` at the top level of the dataset config to skip specific files without deleting anything from disk.
+
+The file should be plain text, one item per line, and each line can be:
+- absolute path (recommended for unambiguous matching)
+- relative path from a dataset root
+- basename (or stem) if you want broad matching
+
+The DAC dedup script (`scripts/dac_hist_dedup.py`) writes relative paths by default for portability across machines. Use `--exclude-path-format absolute` if you prefer absolute paths.
+
+Example:
+```json
+{
+    "dataset_type": "audio_dir",
+    "datasets": [
+        {
+            "id": "my_audio",
+            "path": "/path/to/audio/dataset/"
+        }
+    ],
+    "exclude_paths_file": "/path/to/exclude_paths.txt",
+    "random_crop": true
+}
+```
+
 ## S3 WebDataset
 To load audio files and related metadata from .tar files in the WebDataset format hosted in Amazon S3 buckets, you can set the `dataset_type` property to `s3`, and provide the `datasets` parameter with a list of objects containing the AWS S3 path to the shared S3 bucket prefix of the WebDataset .tar files. The S3 bucket will be searched recursively given the path, and assumes any .tar files found contain audio files and corresponding JSON files where the related files differ only in file extension (e.g. "000001.flac", "000001.json", "00002.flac", "00002.json", etc.)
 
