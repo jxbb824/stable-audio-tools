@@ -8,7 +8,11 @@ from prefigure.prefigure import get_all_args, push_wandb_config
 from stable_audio_tools.data.dataset import create_dataloader_from_config, fast_scandir
 from stable_audio_tools.models import create_model_from_config
 from stable_audio_tools.models.utils import copy_state_dict, load_ckpt_state_dict, remove_weight_norm_from_model
-from stable_audio_tools.training import create_training_wrapper_from_config, create_demo_callback_from_config
+from stable_audio_tools.training import (
+    create_demo_callback_from_config,
+    create_song_describer_eval_callback_from_config,
+    create_training_wrapper_from_config,
+)
 
 class ExceptionCallback(pl.Callback):
     def on_exception(self, trainer, module, err):
@@ -109,6 +113,7 @@ def main():
         demo_callback = create_demo_callback_from_config(model_config, demo_dl=val_dl)
     else:
         demo_callback = create_demo_callback_from_config(model_config, demo_dl=train_dl)
+    song_describer_eval_callback = create_song_describer_eval_callback_from_config(model_config)
 
     #Combine args and config dicts
     args_dict = vars(args)
@@ -145,6 +150,10 @@ def main():
             "val_check_interval": args.val_every,
         })
 
+    callbacks = [ckpt_callback, demo_callback, exc_callback, save_model_config_callback]
+    if song_describer_eval_callback is not None:
+        callbacks.append(song_describer_eval_callback)
+
     trainer = pl.Trainer(
         devices="auto",
         accelerator="gpu",
@@ -152,7 +161,7 @@ def main():
         strategy=strategy,
         precision=args.precision,
         accumulate_grad_batches=args.accum_batches, 
-        callbacks=[ckpt_callback, demo_callback, exc_callback, save_model_config_callback],
+        callbacks=callbacks,
         logger=logger,
         log_every_n_steps=1,
         max_epochs=200,

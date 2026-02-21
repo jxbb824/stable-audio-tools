@@ -243,3 +243,39 @@ def create_demo_callback_from_config(model_config, **kwargs):
         )
     else:
         raise NotImplementedError(f'Unknown model type: {model_type}')
+
+
+def create_song_describer_eval_callback_from_config(model_config):
+    training_config = model_config.get("training", {})
+    eval_config = training_config.get("song_describer_eval", {})
+
+    if not eval_config.get("enabled", False):
+        return None
+
+    model_type = model_config.get("model_type", None)
+    if model_type not in ["diffusion_cond", "diffusion_cond_inpaint"]:
+        print("song_describer_eval is only supported for diffusion conditional models")
+        return None
+
+    precomputed_path = eval_config.get("precomputed_embeddings_path", None)
+    if precomputed_path is None:
+        raise ValueError("song_describer_eval.precomputed_embeddings_path must be specified when enabled=true")
+
+    demo_config = training_config.get("demo", {})
+    default_cfg_scale = demo_config.get("demo_cfg_scales", [7])[0] if demo_config.get("demo_cfg_scales") else 7
+
+    from .songscriber_eval import SongDescriberClapEvalCallback
+
+    return SongDescriberClapEvalCallback(
+        precomputed_embeddings_path=precomputed_path,
+        sample_size=model_config["sample_size"],
+        eval_every=eval_config.get("eval_every", demo_config.get("demo_every", 2000)),
+        num_prompts=eval_config.get("num_prompts", 64),
+        eval_steps=eval_config.get("eval_steps", demo_config.get("demo_steps", 100)),
+        eval_cfg_scale=eval_config.get("eval_cfg_scale", default_cfg_scale),
+        gen_batch_size=eval_config.get("gen_batch_size", 4),
+        clap_batch_size=eval_config.get("clap_batch_size", 8),
+        clap_model_name=eval_config.get("clap_model_name", "laion/clap-htsat-fused"),
+        clap_device=eval_config.get("clap_device", "cuda"),
+        metric_prefix=eval_config.get("metric_prefix", "songscriber"),
+    )
