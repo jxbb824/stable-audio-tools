@@ -1,3 +1,6 @@
 [submodule "third_party/loraw"]
 	path = third_party/loraw
 	url = https://github.com/NeuralNotW0rk/LoRAW.git
+[submodule "third_party/metric"]
+	path = third_party/metric
+	url = https://github.com/Stability-AI/stable-audio-metrics.git
