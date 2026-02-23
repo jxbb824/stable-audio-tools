@@ -17,4 +17,6 @@ python3 scripts/precompute_song_describer_clap_embeddings.py \
   --csv-path dataset/small-700/song_describer.csv \
   --audio-dir dataset/small-700/audio \
   --output-path dataset/small-700/song_describer_clap_embeddings.npz \
+  --prompt-source training_style \
+  --prompt-seed 0 \
   --device cuda

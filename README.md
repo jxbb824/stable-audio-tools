@@ -1,3 +1,308 @@
+# Jamendo Run Guide
+This section documents the full workflow used in this repo for MTG-Jamendo style training, deduplication, attribution, inference, and evaluation.
+
+Everything below is written for Jamendo data layout first. A "using your own dataset" checklist is included near the end.
+
+## 1) Environment Setup
+There is no single locked requirements file in this repo. The practical setup is:
+
+```bash
+# from repo root
+conda create -n sat-jamendo python=3.10 -y
+conda activate sat-jamendo
+
+# pick the torch build that matches your CUDA runtime
+pip install --upgrade pip
+pip install torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu124
+
+# install this repo
+pip install -e .
+
+# LoRA submodule/package (needed only for LoRA training)
+git submodule update --init --recursive
+pip install -e third_party/loraw
+```
+
+Install the dependencies in one command:
+
+```bash
+pip install prefigure descript-audio-codec laion-clap transformers k-diffusion v-diffusion-pytorch vector-quantize-pytorch alias-free-torch ema-pytorch traker fast_jl bitsandbytes wandb -e third_party/loraw
+```
+
+## 2) Jamendo Data Layout
+Expected layout in this repo:
+
+```text
+dataset/
+  pretrained_model/
+    model.ckpt
+    vae_model.ckpt
+  small-5000/
+    audio/
+      00/*.mp3
+      01/*.mp3
+      ...
+    raw_30s.tsv
+    raw.meta.tsv
+  small-700/
+    audio/
+      00/*.2min.mp3
+      01/*.2min.mp3
+      ...
+    raw.tsv
+    audio_metadata.tsv
+    song_describer.csv
+    song_describer_clap_embeddings.npz
+```
+
+What each folder is used for:
+
+- `dataset/small-5000`: training set
+- `dataset/small-700`: song_describer/CLAP evaluation set
+- `dataset/pretrained_model`: base checkpoint + VAE checkpoint used for finetuning
+
+Important:
+
+- `download_mtg_jamendo.py` downloads audio only.
+- `raw_30s.tsv` and `raw.meta.tsv` are used by `custom_md_fma.py` to create text prompts.
+
+## 3) Download or Prepare Jamendo Audio
+To download around 5000 tracks into training layout:
+
+```bash
+python3 download_mtg_jamendo.py \
+  --target 5000 \
+  --audio-dir dataset/small-5000/audio
+```
+
+After that, make sure metadata files exist:
+
+- `dataset/small-5000/raw_30s.tsv`
+- `dataset/small-5000/raw.meta.tsv`
+
+## 4) Deduplicate the Training Set
+Run dedup:
+
+```bash
+python3 scripts/dac_hist_dedup.py \
+  --dataset-config stable_audio_tools/configs/dataset_configs/local_training_custom.json \
+  --output-dir outputs/dac_dedup \
+  --device cuda \
+  --similarity-device cuda \
+  --similarity-threshold 0.95 \
+  --histogram-mode per_codebook \
+  --max-audio-seconds 120
+```
+
+Main outputs:
+
+- `outputs/dac_dedup/exclude_paths.txt`
+- `outputs/dac_dedup/similar_pairs.jsonl`
+- `outputs/dac_dedup/summary.json`
+
+`stable_audio_tools/configs/dataset_configs/local_training_custom.json` already points `exclude_paths_file` to `outputs/dac_dedup/exclude_paths.txt`.
+
+## 5) Precompute Song-Describer CLAP Embeddings
+`model_config*.json` in this repo enables `training.song_describer_eval` by default, so precomputed CLAP embeddings should exist before training.
+
+```bash
+python3 scripts/precompute_song_describer_clap_embeddings.py \
+  --csv-path dataset/small-700/song_describer.csv \
+  --audio-dir dataset/small-700/audio \
+  --output-path dataset/small-700/song_describer_clap_embeddings.npz \
+  --prompt-source training_style \
+  --prompt-seed 0 \
+  --device cuda
+```
+
+If you want to skip this evaluation during training, set `training.song_describer_eval.enabled` to `false` in your model config.
+
+## 6) Training Modes
+Common dataset config used below:
+
+- `stable_audio_tools/configs/dataset_configs/local_training_custom.json`
+
+### 6.1 Full finetune (standard)
+```bash
+python3 train.py \
+  --model-config model_config.json \
+  --dataset-config stable_audio_tools/configs/dataset_configs/local_training_custom.json \
+  --pretrained-ckpt-path dataset/pretrained_model/model.ckpt \
+  --pretransform-ckpt-path dataset/pretrained_model/vae_model.ckpt \
+  --batch-size 8 \
+  --num-workers 8 \
+  --precision "16-mixed" \
+  --name "stable_audio_open_finetune" \
+  --save-dir outputs
+```
+
+### 6.2 Finetune with frozen VAE path
+```bash
+python3 train.py \
+  --model-config model_config_freeze_vae.json \
+  --dataset-config stable_audio_tools/configs/dataset_configs/local_training_custom.json \
+  --pretrained-ckpt-path dataset/pretrained_model/model.ckpt \
+  --pretransform-ckpt-path dataset/pretrained_model/vae_model.ckpt \
+  --batch-size 8 \
+  --num-workers 8 \
+  --precision "16-mixed" \
+  --name "stable_audio_open_finetune_freeze_vae" \
+  --save-dir outputs
+```
+
+### 6.3 LoRA finetune
+Use `train_lora.py`:
+
+```bash
+python3 train_lora.py \
+  --model-config model_config_lora.json \
+  --dataset-config stable_audio_tools/configs/dataset_configs/local_training_custom.json \
+  --pretrained-ckpt-path dataset/pretrained_model/model.ckpt \
+  --pretransform-ckpt-path dataset/pretrained_model/vae_model.ckpt \
+  --batch-size 32 \
+  --num-workers 8 \
+  --precision "16-mixed" \
+  --name "stable_audio_lora_jamendo" \
+  --save-dir outputs
+```
+
+## 7) Unwrap Checkpoint Before Inference / External Eval
+Training checkpoints are Lightning wrappers. Export an unwrapped model checkpoint:
+
+```bash
+python3 unwrap_model.py \
+  --model-config model_config.json \
+  --ckpt-path outputs/stable_audio_open_finetune/<run_id>/checkpoints/<checkpoint>.ckpt \
+  --name model_unwrap
+```
+
+This writes `model_unwrap.ckpt` in repo root. Use this for inference and eval scripts.
+
+## 8) Minimal Inference Script
+
+```python
+import json
+from pathlib import Path
+
+import torch
+import torchaudio
+from einops import rearrange
+
+from stable_audio_tools.models import create_model_from_config
+from stable_audio_tools.models.utils import load_ckpt_state_dict
+from stable_audio_tools.inference.generation import generate_diffusion_cond
+
+CONFIG_PATH = "model_config.json"
+UNWRAPPED_CKPT = "model_unwrap.ckpt"
+PROMPTS = [
+    "dirty, rock, breakbeat, metal",
+    "reggae, rock",
+]
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+out_dir = Path("outputs/generated")
+out_dir.mkdir(parents=True, exist_ok=True)
+
+with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+    model_config = json.load(f)
+
+model = create_model_from_config(model_config)
+model.load_state_dict(load_ckpt_state_dict(UNWRAPPED_CKPT), strict=False)
+model = model.to(device).eval()
+
+sample_rate = model_config["sample_rate"]
+sample_size = model_config["sample_size"]
+seconds_total = sample_size / sample_rate
+
+for i, prompt in enumerate(PROMPTS):
+    conditioning = [{
+        "prompt": prompt,
+        "seconds_start": 0.0,
+        "seconds_total": seconds_total,
+    }]
+    audio = generate_diffusion_cond(
+        model,
+        steps=100,
+        cfg_scale=7,
+        conditioning=conditioning,
+        batch_size=1,
+        sample_size=sample_size,
+        sampler_type="dpmpp-3m-sde",
+        sigma_min=0.3,
+        sigma_max=500.0,
+        device=device,
+        seed=42 + i,
+    )
+
+    audio = rearrange(audio, "b c t -> c (b t)").to(torch.float32)
+    peak = audio.abs().max().clamp(min=1e-8)
+    audio = (audio / peak).clamp(-1, 1)
+    audio_i16 = (audio * 32767.0).to(torch.int16).cpu()
+
+    torchaudio.save(str(out_dir / f"output_finetuned_{i}.wav"), audio_i16, sample_rate)
+```
+
+## 9) Data Attribution (D-TRAK) Workflow
+`scripts/run_dtrak_attribution.sh` expects query wavs in `outputs/generated` and by default uses:
+
+- train set: `stable_audio_tools/configs/dataset_configs/local_training_custom.json`
+- query set: `stable_audio_tools/configs/dataset_configs/dtrak_generated_queries.json`
+
+Run:
+
+```bash
+bash scripts/run_dtrak_attribution.sh
+```
+
+Or with Slurm:
+
+```bash
+sbatch scripts/run_dtrak_attribution.slurm
+```
+
+Note on prompt mapping for queries:
+
+- The current default query metadata mapping is broken for real use (it was hardcoded for an earlier smoketest).
+- You should treat `custom_md_generated_from_test.py` as a placeholder and replace it with your own query-to-prompt mapping.
+- Update `stable_audio_tools/configs/dataset_configs/dtrak_generated_queries.json` to point to your own metadata module.
+
+## 10) Standalone Evaluation (CLAP-FAD + CLAP Alignment)
+After you have an unwrapped checkpoint:
+
+```bash
+python3 scripts/eval_song_describer_checkpoint_clap.py \
+  --model-config model_config.json \
+  --ckpt-path model_unwrap.ckpt \
+  --precomputed-embeddings-path dataset/small-700/song_describer_clap_embeddings.npz \
+  --steps 100 \
+  --cfg-scale 7 \
+  --gen-batch-size 4 \
+  --clap-batch-size 8 \
+  --device cuda
+```
+
+Or run:
+
+```bash
+sbatch scripts/run_eval_song_describer_checkpoint_clap.slurm
+```
+
+## 11) If You Switch to a New Dataset (Non-Jamendo)
+You can reuse:
+
+- `train.py`, `train_lora.py`, `unwrap_model.py`, `scripts/dac_hist_dedup.py`
+- D-TRAK scripts (`scripts/dtrak_extract_features.py`, `scripts/dtrak_score.py`)
+- inference API (`stable_audio_tools.inference.generation.generate_diffusion_cond`)
+
+You must update:
+
+- Dataset paths in your dataset config JSON.
+- `custom_metadata_module` so that `get_custom_metadata(info, audio)` returns at least a meaningful `prompt`.
+- If you need query attribution, query dataset config and query metadata mapping.
+- Song-describer evaluation assets (`song_describer.csv`, ref audio, precomputed CLAP embeddings), or disable `training.song_describer_eval`.
+
+---
+
 # stable-audio-tools
 Training and inference code for audio generation models
 

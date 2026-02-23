@@ -31,6 +31,19 @@ def parse_args():
         default=Path("dataset/small-700/song_describer_clap_embeddings.npz"),
     )
     parser.add_argument(
+        "--prompt-source",
+        type=str,
+        choices=["caption", "training_style"],
+        default="caption",
+        help="caption: use song_describer caption; training_style: use FMA-style prompt generation.",
+    )
+    parser.add_argument(
+        "--prompt-seed",
+        type=int,
+        default=0,
+        help="Base seed used only when --prompt-source=training_style.",
+    )
+    parser.add_argument(
         "--clap-model-name",
         type=str,
         default=DEFAULT_CLAP_MODEL_NAME,
@@ -72,13 +85,20 @@ def main():
     if device == "auto":
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    samples = load_song_describer_samples(args.csv_path, args.audio_dir, limit=args.limit)
+    samples = load_song_describer_samples(
+        args.csv_path,
+        args.audio_dir,
+        limit=args.limit,
+        prompt_source=args.prompt_source,
+        prompt_seed=args.prompt_seed,
+    )
     if not samples:
         raise RuntimeError(f"No samples loaded from {args.csv_path}")
 
     print(f"Loaded {len(samples)} song_describer rows")
     print(f"Using device: {device}")
     print(f"CLAP model: {args.clap_model_name}")
+    print(f"Prompt source: {args.prompt_source}")
 
     embedder = ClapEmbedder(
         model_name=args.clap_model_name,
@@ -90,9 +110,19 @@ def main():
     prompts = [sample.prompt for sample in samples]
 
     print("Computing audio embeddings...")
-    audio_embeddings = embedder.embed_audio_files(audio_paths, batch_size=args.audio_batch_size)
+    audio_embeddings = embedder.embed_audio_files(
+        audio_paths,
+        batch_size=args.audio_batch_size,
+        show_progress=True,
+        progress_desc="Audio embeddings",
+    )
     print("Computing text embeddings...")
-    text_embeddings = embedder.embed_texts(prompts, batch_size=args.text_batch_size)
+    text_embeddings = embedder.embed_texts(
+        prompts,
+        batch_size=args.text_batch_size,
+        show_progress=True,
+        progress_desc="Text embeddings",
+    )
 
     if audio_embeddings.shape[0] != len(samples) or text_embeddings.shape[0] != len(samples):
         raise RuntimeError(
