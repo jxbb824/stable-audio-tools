@@ -12,7 +12,7 @@ set -euo pipefail
 cd /home/xiruij/stable-audio-tools
 mkdir -p logs
 
-MODEL_CONFIG="/home/xiruij/stable-audio-tools/model_config.json"
+MODEL_CONFIG="/home/xiruij/stable-audio-tools/model_config_freeze_vae.json"
 DATASET_CONFIG="/home/xiruij/stable-audio-tools/stable_audio_tools/configs/dataset_configs/local_training_custom.json"
 MODEL_CKPT="/home/xiruij/stable-audio-tools/dataset/pretrained_model/model.ckpt"
 VAE_CKPT="/home/xiruij/stable-audio-tools/dataset/pretrained_model/vae_model.ckpt"
@@ -30,4 +30,3 @@ python3 train.py \
   --name "stable_audio_open_finetune" \
   --save-dir "$SAVE_DIR" \
   # --logger "none" \
-

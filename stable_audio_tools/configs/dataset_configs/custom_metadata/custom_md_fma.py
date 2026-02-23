@@ -3,9 +3,20 @@ import random
 import re
 
 
-_DATASET_DIR = Path(__file__).resolve().parents[4] / "dataset"
-_RAW_TSV = _DATASET_DIR / "raw.tsv"
-_AUDIO_METADATA_TSV = _DATASET_DIR / "audio_metadata.tsv"
+_DATASET_ROOT = Path(__file__).resolve().parents[4] / "dataset"
+_SMALL_DATASET_DIR = _DATASET_ROOT / "small-5000"
+
+if (_SMALL_DATASET_DIR / "raw_30s.tsv").exists():
+    _DATASET_DIR = _SMALL_DATASET_DIR
+    _RAW_TSV = _SMALL_DATASET_DIR / "raw_30s.tsv"
+else:
+    _DATASET_DIR = _DATASET_ROOT
+    _RAW_TSV = _DATASET_ROOT / "raw.tsv"
+
+if (_SMALL_DATASET_DIR / "raw.meta.tsv").exists():
+    _AUDIO_METADATA_TSV = _SMALL_DATASET_DIR / "raw.meta.tsv"
+else:
+    _AUDIO_METADATA_TSV = _DATASET_ROOT / "audio_metadata.tsv"
 
 
 def _track_id_to_int(track_id):

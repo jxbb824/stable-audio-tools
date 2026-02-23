@@ -176,6 +176,8 @@ def create_demo_callback_from_config(model_config, **kwargs):
     assert training_config is not None, 'training config must be specified in model config'
 
     demo_config = training_config.get("demo", {})
+    if not demo_config.get("enabled", True):
+        return None
 
     if model_type == 'autoencoder':
         from .autoencoders import AutoencoderDemoCallback

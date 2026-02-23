@@ -162,6 +162,10 @@ def main():
             "val_check_interval": args.val_every,
         })
 
+    callbacks = [ckpt_callback, exc_callback, save_model_config_callback]
+    if demo_callback is not None:
+        callbacks.append(demo_callback)
+
     trainer = pl.Trainer(
         devices="auto",
         accelerator="gpu",
@@ -169,7 +173,7 @@ def main():
         strategy=strategy,
         precision=args.precision,
         accumulate_grad_batches=args.accum_batches, 
-        callbacks=[ckpt_callback, demo_callback, exc_callback, save_model_config_callback],
+        callbacks=callbacks,
         logger=logger,
         log_every_n_steps=1,
         max_epochs=200,

@@ -4,7 +4,7 @@
         {
             "id": "custom_audio",
             "path": "/home/xiruij/stable-audio-tools/dataset/small-5000/audio",
-            "custom_metadata_module": "/home/xiruij/stable-audio-tools/stable_audio_tools/configs/dataset_configs/custom_metadata/custom_md_fma_simple.py"
+            "custom_metadata_module": "/home/xiruij/stable-audio-tools/stable_audio_tools/configs/dataset_configs/custom_metadata/custom_md_fma.py"
         }
     ],
     "exclude_paths_file": "/home/xiruij/stable-audio-tools/outputs/dac_dedup/exclude_paths.txt",

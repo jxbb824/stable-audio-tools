@@ -150,7 +150,9 @@ def main():
             "val_check_interval": args.val_every,
         })
 
-    callbacks = [ckpt_callback, demo_callback, exc_callback, save_model_config_callback]
+    callbacks = [ckpt_callback, exc_callback, save_model_config_callback]
+    if demo_callback is not None:
+        callbacks.append(demo_callback)
     if song_describer_eval_callback is not None:
         callbacks.append(song_describer_eval_callback)
 

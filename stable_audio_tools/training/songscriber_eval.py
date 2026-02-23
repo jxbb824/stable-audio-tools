@@ -156,6 +156,11 @@ class SongDescriberClapEvalCallback(pl.Callback):
         from pytorch_lightning.loggers import CometLogger, WandbLogger
 
         if isinstance(logger, WandbLogger):
+            # W&B may already have advanced internal step via training logs.
+            # Guard against non-monotonic step drops.
+            wandb_step = getattr(logger.experiment, "step", None)
+            if isinstance(wandb_step, int):
+                step = max(step, wandb_step)
             logger.experiment.log(metrics, step=step)
         elif isinstance(logger, CometLogger):
             logger.experiment.log_metrics(metrics, step=step)
