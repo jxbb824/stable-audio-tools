@@ -4,12 +4,12 @@ set -euo pipefail
 ROOT_DIR="/home/xiruij/stable-audio-tools"
 cd "${ROOT_DIR}"
 
-MODEL_CONFIG="${MODEL_CONFIG:-${ROOT_DIR}/model_config.json}"
+MODEL_CONFIG="${MODEL_CONFIG:-${ROOT_DIR}/model_config_freeze_vae.json}"
 TRAIN_DATASET_CONFIG="${TRAIN_DATASET_CONFIG:-${ROOT_DIR}/stable_audio_tools/configs/dataset_configs/local_training_custom.json}"
 QUERY_DATASET_CONFIG="${QUERY_DATASET_CONFIG:-${ROOT_DIR}/stable_audio_tools/configs/dataset_configs/dtrak_generated_queries.json}"
+TRAIN_EXCLUDE_PATHS_FILE="${TRAIN_EXCLUDE_PATHS_FILE:-${ROOT_DIR}/outputs/dac_dedup/exclude_paths.txt}"
 
-UNWRAPPED_CKPT="${UNWRAPPED_CKPT:-${ROOT_DIR}/model_unwrap.ckpt}"
-LIGHTNING_CKPT="${LIGHTNING_CKPT:-${ROOT_DIR}/outputs/stable_audio_open_finetune/kklqsk68/checkpoints/epoch=127-step=40000.ckpt}"
+UNWRAPPED_CKPT="${UNWRAPPED_CKPT:-${ROOT_DIR}/exported_model.ckpt}"
 PRETRANSFORM_CKPT="${PRETRANSFORM_CKPT:-}"
 REMOVE_PRETRANSFORM_WEIGHT_NORM="${REMOVE_PRETRANSFORM_WEIGHT_NORM:-none}"
 
@@ -42,24 +42,12 @@ if [[ "${GEN_COUNT}" -lt "${QUERY_COUNT}" ]]; then
   exit 1
 fi
 
-CKPT_TO_USE=""
-if [[ -f "${UNWRAPPED_CKPT}" ]]; then
-  CKPT_TO_USE="${UNWRAPPED_CKPT}"
-  echo "[ckpt] using existing unwrapped checkpoint: ${CKPT_TO_USE}"
-elif [[ -f "${LIGHTNING_CKPT}" ]]; then
-  CKPT_TO_USE="${OUT_DIR}/model_unwrap_auto.ckpt"
-  echo "[ckpt] unwrapped checkpoint not found, exporting from Lightning checkpoint..."
-  python3 unwrap_model.py \
-    --model-config "${MODEL_CONFIG}" \
-    --ckpt-path "${LIGHTNING_CKPT}" \
-    --name "${OUT_DIR}/model_unwrap_auto"
-  echo "[ckpt] exported: ${CKPT_TO_USE}"
-else
-  echo "Neither UNWRAPPED_CKPT nor LIGHTNING_CKPT exists."
-  echo "UNWRAPPED_CKPT=${UNWRAPPED_CKPT}"
-  echo "LIGHTNING_CKPT=${LIGHTNING_CKPT}"
+if [[ ! -f "${UNWRAPPED_CKPT}" ]]; then
+  echo "UNWRAPPED_CKPT not found: ${UNWRAPPED_CKPT}"
   exit 1
 fi
+CKPT_TO_USE="${UNWRAPPED_CKPT}"
+echo "[ckpt] using unwrapped checkpoint: ${CKPT_TO_USE}"
 
 TRAIN_FEATURE="${OUT_DIR}/train_features.memmap"
 QUERY_FEATURE="${OUT_DIR}/query_features.memmap"
@@ -94,10 +82,16 @@ if [[ -n "${PRETRANSFORM_CKPT}" ]]; then
   COMMON_ARGS+=(--pretransform-ckpt-path "${PRETRANSFORM_CKPT}")
 fi
 
+TRAIN_EXCLUDE_ARGS=()
+if [[ -f "${TRAIN_EXCLUDE_PATHS_FILE}" ]]; then
+  TRAIN_EXCLUDE_ARGS+=(--exclude-paths-file "${TRAIN_EXCLUDE_PATHS_FILE}")
+fi
+
 echo "[1/3] extracting train features (${TRAIN_COUNT})"
 python3 scripts/dtrak_extract_features.py \
   "${COMMON_ARGS[@]}" \
   --dataset-config "${TRAIN_DATASET_CONFIG}" \
+  "${TRAIN_EXCLUDE_ARGS[@]}" \
   --feature-path "${TRAIN_FEATURE}" \
   --max-examples "${TRAIN_COUNT}"
 

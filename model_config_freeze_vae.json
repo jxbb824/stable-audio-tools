@@ -126,7 +126,7 @@
         "song_describer_eval": {
             "enabled": true,
             "precomputed_embeddings_path": "/home/xiruij/stable-audio-tools/dataset/small-700/song_describer_clap_embeddings.npz",
-            "eval_every": 2000,
+            "eval_every": 500,
             "num_prompts": 128,
             "eval_steps": 100,
             "eval_cfg_scale": 7,

@@ -29,6 +29,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--model-config", type=str, required=True)
     parser.add_argument("--dataset-config", type=str, required=True)
+    parser.add_argument("--exclude-paths-file", type=str, default=None)
     parser.add_argument("--pretrained-ckpt-path", type=str, required=True)
     parser.add_argument("--pretransform-ckpt-path", type=str, default=None)
     parser.add_argument(
@@ -258,6 +259,8 @@ def main() -> None:
 
     model_config = load_json(args.model_config)
     dataset_config = load_json(args.dataset_config)
+    if args.exclude_paths_file is not None:
+        dataset_config["exclude_paths_file"] = args.exclude_paths_file
     if args.disable_random_crop and "random_crop" in dataset_config:
         dataset_config["random_crop"] = False
     dataset_config["drop_last"] = False

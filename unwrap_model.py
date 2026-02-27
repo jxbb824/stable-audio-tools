@@ -43,7 +43,8 @@ if __name__ == '__main__':
         use_ema = training_config.get("use_ema", False)
 
         training_wrapper = AutoencoderTrainingWrapper.load_from_checkpoint(
-            args.ckpt_path, 
+            args.ckpt_path,
+            map_location='cpu',
             autoencoder=model, 
             strict=False,
             loss_config=training_config["loss_configs"],
@@ -52,7 +53,7 @@ if __name__ == '__main__':
         )
     elif model_type == 'diffusion_uncond':
         from stable_audio_tools.training.diffusion import DiffusionUncondTrainingWrapper
-        training_wrapper = DiffusionUncondTrainingWrapper.load_from_checkpoint(args.ckpt_path, model=model, strict=False)
+        training_wrapper = DiffusionUncondTrainingWrapper.load_from_checkpoint(args.ckpt_path, map_location='cpu', model=model, strict=False)
 
     elif model_type == 'diffusion_autoencoder':
         from stable_audio_tools.training.diffusion import DiffusionAutoencoderTrainingWrapper
@@ -65,14 +66,15 @@ if __name__ == '__main__':
                 param = param.data
             ema_copy.state_dict()[name].copy_(param)
 
-        training_wrapper = DiffusionAutoencoderTrainingWrapper.load_from_checkpoint(args.ckpt_path, model=model, ema_copy=ema_copy, strict=False)
+        training_wrapper = DiffusionAutoencoderTrainingWrapper.load_from_checkpoint(args.ckpt_path, map_location='cpu', model=model, ema_copy=ema_copy, strict=False)
     elif model_type in ['diffusion_cond', 'diffusion_cond_inpaint']:
         from stable_audio_tools.training.diffusion import DiffusionCondTrainingWrapper
         
         use_ema = training_config.get("use_ema", True)
         
         training_wrapper = DiffusionCondTrainingWrapper.load_from_checkpoint(
-            args.ckpt_path, 
+            args.ckpt_path,
+            map_location='cpu',
             model=model, 
             use_ema=use_ema, 
             lr=training_config.get("learning_rate", None),
@@ -95,7 +97,8 @@ if __name__ == '__main__':
                 ema_copy.state_dict()[name].copy_(param)
 
         training_wrapper = AudioLanguageModelTrainingWrapper.load_from_checkpoint(
-            args.ckpt_path, 
+            args.ckpt_path,
+            map_location='cpu',
             model=model, 
             strict=False, 
             ema_copy=ema_copy,
