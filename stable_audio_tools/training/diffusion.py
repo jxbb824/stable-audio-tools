@@ -253,8 +253,6 @@ class DiffusionCondTrainingWrapper(pl.LightningModule):
 
         self.cfg_dropout_prob = cfg_dropout_prob
 
-        self.rng = torch.quasirandom.SobolEngine(1, scramble=True)
-
         self.timestep_sampler = timestep_sampler     
 
         self.timestep_sampler_options = {} if timestep_sampler_options is None else timestep_sampler_options
@@ -380,7 +378,7 @@ class DiffusionCondTrainingWrapper(pl.LightningModule):
 
         if self.timestep_sampler == "uniform":
             # Draw uniformly distributed continuous timesteps
-            t = self.rng.draw(reals.shape[0])[:, 0].to(self.device)
+            t = torch.rand(reals.shape[0], device=self.device)
         elif self.timestep_sampler == "logit_normal":
             t = torch.sigmoid(torch.randn(reals.shape[0], device=self.device))
         elif self.timestep_sampler == "trunc_logit_normal":

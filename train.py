@@ -156,6 +156,14 @@ def main():
     if song_describer_eval_callback is not None:
         callbacks.append(song_describer_eval_callback)
 
+    # Drop incomplete gradient accumulation window at epoch end
+    limit_train_batches = 1.0
+    if args.accum_batches > 1 and hasattr(train_dl.dataset, '__len__'):
+        _num_devices = max(torch.cuda.device_count(), 1) * args.num_nodes
+        _samples_per_device = -(-len(train_dl.dataset) // _num_devices)
+        _batches_per_device = _samples_per_device // args.batch_size
+        limit_train_batches = (_batches_per_device // args.accum_batches) * args.accum_batches
+
     trainer = pl.Trainer(
         devices="auto",
         accelerator="gpu",
@@ -171,6 +179,7 @@ def main():
         gradient_clip_val=args.gradient_clip_val,
         reload_dataloaders_every_n_epochs = 0,
         num_sanity_val_steps=0, # If you need to debug validation, change this line
+        limit_train_batches=limit_train_batches,
         **val_args      
     )
 
