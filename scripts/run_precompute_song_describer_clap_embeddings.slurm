@@ -9,14 +9,14 @@
 
 set -euo pipefail
 
-cd /home/xiruij/stable-audio-tools
+cd "$SLURM_SUBMIT_DIR"
 mkdir -p logs
-export PYTHONPATH="/home/xiruij/stable-audio-tools:${PYTHONPATH:-}"
+export PYTHONPATH="/u/xjiang6/stable-audio-tools:${PYTHONPATH:-}"
 
 python3 scripts/precompute_song_describer_clap_embeddings.py \
-  --csv-path dataset/small-700/song_describer.csv \
-  --audio-dir dataset/small-700/audio \
-  --output-path dataset/small-700/song_describer_clap_embeddings.npz \
+  --csv-path /projects/bffl/xirui/stable-audio-tools/dataset/small-700/song_describer.csv \
+  --audio-dir /projects/bffl/xirui/stable-audio-tools/dataset/small-700/audio \
+  --output-path /projects/bffl/xirui/stable-audio-tools/dataset/small-700/song_describer_clap_embeddings.npz \
   --prompt-source training_style \
   --prompt-seed 0 \
   --device cuda

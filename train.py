@@ -164,6 +164,10 @@ def main():
         _batches_per_device = _samples_per_device // args.batch_size
         limit_train_batches = (_batches_per_device // args.accum_batches) * args.accum_batches
 
+    # It will break drop incomplete gradient accumulation window at epoch end if num_train_samples is set
+    if args.num_train_samples > 0:
+        limit_train_batches = args.num_train_samples // args.batch_size
+
     trainer = pl.Trainer(
         devices="auto",
         accelerator="gpu",
@@ -174,7 +178,7 @@ def main():
         callbacks=callbacks,
         logger=logger,
         log_every_n_steps=1,
-        max_epochs=200,
+        max_epochs=600,
         default_root_dir=args.save_dir,
         gradient_clip_val=args.gradient_clip_val,
         reload_dataloaders_every_n_epochs = 0,

@@ -9,13 +9,13 @@
 
 set -euo pipefail
 
-cd /home/xiruij/stable-audio-tools
+cd "$SLURM_SUBMIT_DIR"
 mkdir -p logs
-export PYTHONPATH="/home/xiruij/stable-audio-tools:${PYTHONPATH:-}"
+export PYTHONPATH="/u/xjiang6/stable-audio-tools:${PYTHONPATH:-}"
 
-MODEL_CONFIG="/home/xiruij/stable-audio-tools/model_config.json"
-MODEL_CKPT="/home/xiruij/stable-audio-tools/model_unwrap.ckpt"
-PRECOMPUTED="/home/xiruij/stable-audio-tools/dataset/small-700/song_describer_clap_embeddings.npz"
+MODEL_CONFIG="/u/xjiang6/stable-audio-tools/model_config.json"
+MODEL_CKPT="/u/xjiang6/stable-audio-tools/model_unwrap.ckpt"
+PRECOMPUTED="/projects/bffl/xirui/stable-audio-tools/dataset/small-700/song_describer_clap_embeddings.npz"
 
 python3 scripts/eval_song_describer_checkpoint_clap.py \
   --model-config "$MODEL_CONFIG" \

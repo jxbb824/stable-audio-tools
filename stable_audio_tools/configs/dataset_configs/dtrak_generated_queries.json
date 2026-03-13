@@ -3,8 +3,8 @@
   "datasets": [
     {
       "id": "generated_queries",
-      "path": "/home/xiruij/stable-audio-tools/outputs/generated",
-      "custom_metadata_module": "/home/xiruij/stable-audio-tools/stable_audio_tools/configs/dataset_configs/custom_metadata/custom_md_generated_from_test.py"
+      "path": "/u/xjiang6/stable-audio-tools/outputs/generated",
+      "custom_metadata_module": "/u/xjiang6/stable-audio-tools/stable_audio_tools/configs/dataset_configs/custom_metadata/custom_md_generated_from_test.py"
     }
   ],
   "random_crop": false,

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="/home/xiruij/stable-audio-tools"
+ROOT_DIR="/u/xjiang6/stable-audio-tools"
 cd "${ROOT_DIR}"
 
 MODEL_CONFIG="${MODEL_CONFIG:-${ROOT_DIR}/model_config_freeze_vae.json}"

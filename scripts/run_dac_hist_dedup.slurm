@@ -9,11 +9,11 @@
 
 set -euo pipefail
 
-cd /home/xiruij/stable-audio-tools
+cd "$SLURM_SUBMIT_DIR"
 mkdir -p logs
 
-DATASET_CONFIG="/home/xiruij/stable-audio-tools/stable_audio_tools/configs/dataset_configs/local_training_custom.json"
-OUTPUT_DIR="/home/xiruij/stable-audio-tools/outputs/dac_dedup"
+DATASET_CONFIG="/u/xjiang6/stable-audio-tools/stable_audio_tools/configs/dataset_configs/local_training_custom.json"
+OUTPUT_DIR="/u/xjiang6/stable-audio-tools/outputs/dac_dedup"
 
 python3 scripts/dac_hist_dedup.py \
   --dataset-config "$DATASET_CONFIG" \
