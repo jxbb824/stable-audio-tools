@@ -13,7 +13,7 @@ cd "$SLURM_SUBMIT_DIR"
 mkdir -p logs
 
 # Optional overrides:
-# export OUT_DIR="/u/xjiang6/stable-audio-tools/outputs/dtrak_attribution_run1"
+# export OUT_DIR="outputs/dtrak_attribution_run1"
 # export PROJ_DIM=16384
 # export USED_DIM=8192
 # export K=10
@@ -22,4 +22,3 @@ mkdir -p logs
 
 
 bash scripts/run_dtrak_attribution.sh
-

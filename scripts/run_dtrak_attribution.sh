@@ -1,19 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="/u/xjiang6/stable-audio-tools"
-cd "${ROOT_DIR}"
+MODEL_CONFIG="${MODEL_CONFIG:-model_config_freeze_vae.json}"
+TRAIN_DATASET_CONFIG="${TRAIN_DATASET_CONFIG:-stable_audio_tools/configs/dataset_configs/local_training_custom.json}"
+QUERY_DATASET_CONFIG="${QUERY_DATASET_CONFIG:-stable_audio_tools/configs/dataset_configs/dtrak_generated_queries.json}"
+TRAIN_EXCLUDE_PATHS_FILE="${TRAIN_EXCLUDE_PATHS_FILE:-outputs/dac_dedup/exclude_paths.txt}"
 
-MODEL_CONFIG="${MODEL_CONFIG:-${ROOT_DIR}/model_config_freeze_vae.json}"
-TRAIN_DATASET_CONFIG="${TRAIN_DATASET_CONFIG:-${ROOT_DIR}/stable_audio_tools/configs/dataset_configs/local_training_custom.json}"
-QUERY_DATASET_CONFIG="${QUERY_DATASET_CONFIG:-${ROOT_DIR}/stable_audio_tools/configs/dataset_configs/dtrak_generated_queries.json}"
-TRAIN_EXCLUDE_PATHS_FILE="${TRAIN_EXCLUDE_PATHS_FILE:-${ROOT_DIR}/outputs/dac_dedup/exclude_paths.txt}"
-
-UNWRAPPED_CKPT="${UNWRAPPED_CKPT:-${ROOT_DIR}/exported_model.ckpt}"
+UNWRAPPED_CKPT="${UNWRAPPED_CKPT:-exported_model.ckpt}"
 PRETRANSFORM_CKPT="${PRETRANSFORM_CKPT:-}"
 REMOVE_PRETRANSFORM_WEIGHT_NORM="${REMOVE_PRETRANSFORM_WEIGHT_NORM:-none}"
 
-OUT_DIR="${OUT_DIR:-${ROOT_DIR}/outputs/dtrak_attribution_$(date +%Y%m%d_%H%M%S)}"
+OUT_DIR="${OUT_DIR:-outputs/dtrak_attribution_$(date +%Y%m%d_%H%M%S)}"
 TRAIN_COUNT="${TRAIN_COUNT:-5000}"
 QUERY_COUNT="${QUERY_COUNT:-10}"
 
@@ -35,8 +32,8 @@ PARAM_REGEX="${PARAM_REGEX:-layers\.(1[6-9]|2[0-3])\.}"
 
 mkdir -p "${OUT_DIR}" logs
 
-echo "[check] querying generated samples in ${ROOT_DIR}/outputs/generated"
-GEN_COUNT="$(find "${ROOT_DIR}/outputs/generated" -maxdepth 1 -type f -name '*.wav' | wc -l | tr -d ' ')"
+echo "[check] querying generated samples in outputs/generated"
+GEN_COUNT="$(find outputs/generated -maxdepth 1 -type f -name '*.wav' | wc -l | tr -d ' ')"
 if [[ "${GEN_COUNT}" -lt "${QUERY_COUNT}" ]]; then
   echo "Expected at least ${QUERY_COUNT} wavs in outputs/generated, found ${GEN_COUNT}."
   exit 1

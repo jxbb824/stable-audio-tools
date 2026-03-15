@@ -41,7 +41,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--attribution-dir",
         type=Path,
-        default=Path("/u/xjiang6/stable-audio-tools/outputs/dtrak_attribution_20260225_124956"),
+        default=Path("outputs/dtrak_attribution_20260225_124956"),
         help="Directory containing D-TRAK score/features outputs.",
     )
     parser.add_argument(

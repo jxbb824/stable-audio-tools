@@ -11,9 +11,9 @@ set -euo pipefail
 
 cd "$SLURM_SUBMIT_DIR"
 mkdir -p logs
-export PYTHONPATH="/u/xjiang6/stable-audio-tools:${PYTHONPATH:-}"
+export PYTHONPATH="${SLURM_SUBMIT_DIR}:${PYTHONPATH:-}"
 
-ATTRIBUTION_DIR="${ATTRIBUTION_DIR:-/u/xjiang6/stable-audio-tools/outputs/dtrak_attribution_20260225_124956}"
+ATTRIBUTION_DIR="${ATTRIBUTION_DIR:-outputs/dtrak_attribution_20260225_124956}"
 OUTPUT_DIR="${OUTPUT_DIR:-${ATTRIBUTION_DIR}/rank_vs_clap}"
 OUTPUT_PREFIX="${OUTPUT_PREFIX:-influence_rank_vs_clap}"
 CLAP_DEVICE="${CLAP_DEVICE:-cuda}"

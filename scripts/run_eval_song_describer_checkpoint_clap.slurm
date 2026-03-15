@@ -11,11 +11,11 @@ set -euo pipefail
 
 cd "$SLURM_SUBMIT_DIR"
 mkdir -p logs
-export PYTHONPATH="/u/xjiang6/stable-audio-tools:${PYTHONPATH:-}"
+export PYTHONPATH="${SLURM_SUBMIT_DIR}:${PYTHONPATH:-}"
 
-MODEL_CONFIG="/u/xjiang6/stable-audio-tools/model_config.json"
-MODEL_CKPT="/u/xjiang6/stable-audio-tools/model_unwrap.ckpt"
-PRECOMPUTED="/projects/bffl/xirui/stable-audio-tools/dataset/small-700/song_describer_clap_embeddings.npz"
+MODEL_CONFIG="model_config.json"
+MODEL_CKPT="model_unwrap.ckpt"
+PRECOMPUTED="dataset/small-700/song_describer_clap_embeddings.npz"
 
 python3 scripts/eval_song_describer_checkpoint_clap.py \
   --model-config "$MODEL_CONFIG" \

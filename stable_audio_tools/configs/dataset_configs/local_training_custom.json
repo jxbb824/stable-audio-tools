@@ -3,10 +3,10 @@
     "datasets": [
         {
             "id": "custom_audio",
-            "path": "/projects/bffl/xirui/stable-audio-tools/dataset/small-5000/audio",
-            "custom_metadata_module": "/u/xjiang6/stable-audio-tools/stable_audio_tools/configs/dataset_configs/custom_metadata/custom_md_fma.py"
+            "path": "dataset/small-5000/audio",
+            "custom_metadata_module": "stable_audio_tools/configs/dataset_configs/custom_metadata/custom_md_fma.py"
         }
     ],
-    "exclude_paths_file": "/u/xjiang6/stable-audio-tools/outputs/dac_dedup/exclude_paths.txt",
+    "exclude_paths_file": "outputs/dac_dedup/exclude_paths.txt",
     "random_crop": true
 }
