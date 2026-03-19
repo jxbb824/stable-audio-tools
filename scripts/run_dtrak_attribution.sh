@@ -33,9 +33,9 @@ PARAM_REGEX="${PARAM_REGEX:-layers\.(1[6-9]|2[0-3])\.}"
 mkdir -p "${OUT_DIR}" logs
 
 echo "[check] querying generated samples in outputs/generated"
-GEN_COUNT="$(find outputs/generated -maxdepth 1 -type f -name '*.wav' | wc -l | tr -d ' ')"
+GEN_COUNT="$(find outputs/generated -maxdepth 1 -type f \( -name '*.wav' -o -name '*.mp3' \) | wc -l | tr -d ' ')"
 if [[ "${GEN_COUNT}" -lt "${QUERY_COUNT}" ]]; then
-  echo "Expected at least ${QUERY_COUNT} wavs in outputs/generated, found ${GEN_COUNT}."
+  echo "Expected at least ${QUERY_COUNT} audio files (.wav/.mp3) in outputs/generated, found ${GEN_COUNT}."
   exit 1
 fi
 

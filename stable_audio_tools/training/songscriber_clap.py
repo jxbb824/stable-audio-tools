@@ -135,8 +135,26 @@ class ClapEmbedder:
         self.model_name = model_name
         self.sample_rate = sample_rate
         self.device = torch.device(device)
-        self.model = ClapModel.from_pretrained(model_name).to(self.device).eval()
+        try:
+            self.model = ClapModel.from_pretrained(model_name, use_safetensors=True)
+        except TypeError:
+            self.model = ClapModel.from_pretrained(model_name)
+        self.model = self.model.to(self.device).eval()
         self.processor = ClapProcessor.from_pretrained(model_name)
+
+    @staticmethod
+    def _unwrap_feature_output(output: torch.Tensor | object) -> torch.Tensor:
+        if isinstance(output, torch.Tensor):
+            return output
+
+        pooler_output = getattr(output, "pooler_output", None)
+        if isinstance(pooler_output, torch.Tensor):
+            return pooler_output
+
+        raise TypeError(
+            "Unexpected CLAP feature output type. "
+            f"Expected torch.Tensor or object with pooler_output, got {type(output)!r}"
+        )
 
     def embed_audio_arrays(
         self,
@@ -161,7 +179,7 @@ class ClapEmbedder:
             )
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
             with torch.no_grad():
-                emb = self.model.get_audio_features(**inputs)
+                emb = self._unwrap_feature_output(self.model.get_audio_features(**inputs))
             outputs.append(emb.detach().cpu().numpy())
         return np.concatenate(outputs, axis=0) if outputs else np.empty((0, 512), dtype=np.float32)
 
@@ -219,7 +237,7 @@ class ClapEmbedder:
             )
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
             with torch.no_grad():
-                emb = self.model.get_text_features(**inputs)
+                emb = self._unwrap_feature_output(self.model.get_text_features(**inputs))
             outputs.append(emb.detach().cpu().numpy())
         return np.concatenate(outputs, axis=0) if outputs else np.empty((0, 512), dtype=np.float32)
 

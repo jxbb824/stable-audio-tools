@@ -87,7 +87,11 @@ def parse_args() -> argparse.Namespace:
         "--cache-path",
         type=Path,
         default=None,
-        help="Path to CLAP embedding cache .npz (default: <output-dir>/clap_embeddings_train_query.npz).",
+        help=(
+            "Base path for CLAP embedding caches "
+            "(default: <output-dir>/clap_embeddings). "
+            "Separate <base>_train.npz and <base>_query.npz files are used."
+        ),
     )
     parser.add_argument(
         "--force-recompute-clap",
@@ -135,6 +139,14 @@ def same_path_list(a: np.ndarray, b: Sequence[str]) -> bool:
     return bool(np.all(a.astype(str) == np.array(b, dtype=str)))
 
 
+def split_cache_paths(cache_base_path: Path) -> tuple[Path, Path]:
+    base = cache_base_path.with_suffix("") if cache_base_path.suffix == ".npz" else cache_base_path
+    return (
+        base.parent / f"{base.name}_train.npz",
+        base.parent / f"{base.name}_query.npz",
+    )
+
+
 def embed_audio_files_streaming(
     clap: ClapEmbedder,
     audio_paths: Sequence[str],
@@ -172,74 +184,123 @@ def embed_audio_files_streaming(
     return np.concatenate(emb_chunks, axis=0)
 
 
-def load_or_compute_clap_embeddings(
-    train_paths: list[str],
-    query_paths: list[str],
+def load_cached_clap_embeddings(
+    audio_paths: Sequence[str],
     cache_path: Path,
     clap_model_name: str,
-    clap_device: str,
-    clap_batch_size: int,
-    audio_load_batch_size: int,
-    force_recompute: bool,
-) -> tuple[np.ndarray, np.ndarray]:
-    if cache_path.exists() and not force_recompute:
-        try:
-            data = np.load(cache_path, allow_pickle=False)
-            cache_ok = (
-                str(data["clap_model_name"][0]) == clap_model_name
-                and int(data["clap_sample_rate"][0]) == CLAP_SAMPLE_RATE
-                and same_path_list(data["train_paths"], train_paths)
-                and same_path_list(data["query_paths"], query_paths)
-            )
-            if cache_ok:
-                print(f"[cache] using cached CLAP embeddings: {cache_path}")
-                return data["train_embeddings"].astype(np.float32), data["query_embeddings"].astype(np.float32)
-            print(f"[cache] mismatch detected, recomputing CLAP embeddings: {cache_path}", flush=True)
-        except Exception as exc:
-            print(f"[cache] failed to read cache ({cache_path}): {exc}; recomputing.", flush=True)
+) -> np.ndarray | None:
+    try:
+        data = np.load(cache_path, allow_pickle=False)
+        cache_ok = (
+            str(data["clap_model_name"][0]) == clap_model_name
+            and int(data["clap_sample_rate"][0]) == CLAP_SAMPLE_RATE
+            and same_path_list(data["audio_paths"], audio_paths)
+        )
+        if cache_ok:
+            print(f"[cache] using cached CLAP embeddings: {cache_path}")
+            return data["embeddings"].astype(np.float32)
+        print(f"[cache] mismatch detected, recomputing CLAP embeddings: {cache_path}", flush=True)
+    except Exception as exc:
+        print(f"[cache] failed to read cache ({cache_path}): {exc}; recomputing.", flush=True)
+    return None
 
-    device = resolve_device(clap_device)
-    print(f"[clap] loading model={clap_model_name} on device={device}", flush=True)
-    clap = ClapEmbedder(model_name=clap_model_name, device=device)
 
-    print(
-        f"[clap] embedding train audio ({len(train_paths)}) "
-        f"with audio_load_batch_size={audio_load_batch_size}, clap_batch_size={clap_batch_size}",
-        flush=True,
-    )
-    train_embeddings = embed_audio_files_streaming(
-        clap=clap,
-        audio_paths=train_paths,
-        clap_batch_size=clap_batch_size,
-        audio_load_batch_size=audio_load_batch_size,
-        desc="CLAP train",
-    ).astype(np.float32)
-
-    print(
-        f"[clap] embedding query audio ({len(query_paths)}) "
-        f"with audio_load_batch_size={audio_load_batch_size}, clap_batch_size={clap_batch_size}",
-        flush=True,
-    )
-    query_embeddings = embed_audio_files_streaming(
-        clap=clap,
-        audio_paths=query_paths,
-        clap_batch_size=clap_batch_size,
-        audio_load_batch_size=audio_load_batch_size,
-        desc="CLAP query",
-    ).astype(np.float32)
-
+def save_clap_embeddings_cache(
+    cache_path: Path,
+    clap_model_name: str,
+    split_name: str,
+    audio_paths: Sequence[str],
+    embeddings: np.ndarray,
+) -> None:
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(
         cache_path,
         created_at=np.array([datetime.now(timezone.utc).isoformat()]),
         clap_model_name=np.array([clap_model_name], dtype=np.str_),
         clap_sample_rate=np.array([CLAP_SAMPLE_RATE], dtype=np.int32),
-        train_paths=np.array(train_paths, dtype=np.str_),
-        query_paths=np.array(query_paths, dtype=np.str_),
-        train_embeddings=train_embeddings,
-        query_embeddings=query_embeddings,
+        split_name=np.array([split_name], dtype=np.str_),
+        audio_paths=np.array(audio_paths, dtype=np.str_),
+        embeddings=embeddings.astype(np.float32, copy=False),
     )
     print(f"[cache] saved CLAP embeddings: {cache_path}")
+
+
+def load_or_compute_clap_embeddings(
+    train_paths: list[str],
+    query_paths: list[str],
+    train_cache_path: Path,
+    query_cache_path: Path,
+    clap_model_name: str,
+    clap_device: str,
+    clap_batch_size: int,
+    audio_load_batch_size: int,
+    force_recompute: bool,
+) -> tuple[np.ndarray, np.ndarray]:
+    train_embeddings = None
+    query_embeddings = None
+    if not force_recompute:
+        if train_cache_path.exists():
+            train_embeddings = load_cached_clap_embeddings(
+                audio_paths=train_paths,
+                cache_path=train_cache_path,
+                clap_model_name=clap_model_name,
+            )
+        if query_cache_path.exists():
+            query_embeddings = load_cached_clap_embeddings(
+                audio_paths=query_paths,
+                cache_path=query_cache_path,
+                clap_model_name=clap_model_name,
+            )
+
+    if train_embeddings is not None and query_embeddings is not None:
+        return train_embeddings, query_embeddings
+
+    device = resolve_device(clap_device)
+    print(f"[clap] loading model={clap_model_name} on device={device}", flush=True)
+    clap = ClapEmbedder(model_name=clap_model_name, device=device)
+
+    if train_embeddings is None:
+        print(
+            f"[clap] embedding train audio ({len(train_paths)}) "
+            f"with audio_load_batch_size={audio_load_batch_size}, clap_batch_size={clap_batch_size}",
+            flush=True,
+        )
+        train_embeddings = embed_audio_files_streaming(
+            clap=clap,
+            audio_paths=train_paths,
+            clap_batch_size=clap_batch_size,
+            audio_load_batch_size=audio_load_batch_size,
+            desc="CLAP train",
+        ).astype(np.float32)
+        save_clap_embeddings_cache(
+            cache_path=train_cache_path,
+            clap_model_name=clap_model_name,
+            split_name="train",
+            audio_paths=train_paths,
+            embeddings=train_embeddings,
+        )
+
+    if query_embeddings is None:
+        print(
+            f"[clap] embedding query audio ({len(query_paths)}) "
+            f"with audio_load_batch_size={audio_load_batch_size}, clap_batch_size={clap_batch_size}",
+            flush=True,
+        )
+        query_embeddings = embed_audio_files_streaming(
+            clap=clap,
+            audio_paths=query_paths,
+            clap_batch_size=clap_batch_size,
+            audio_load_batch_size=audio_load_batch_size,
+            desc="CLAP query",
+        ).astype(np.float32)
+        save_clap_embeddings_cache(
+            cache_path=query_cache_path,
+            clap_model_name=clap_model_name,
+            split_name="query",
+            audio_paths=query_paths,
+            embeddings=query_embeddings,
+        )
+
     return train_embeddings, query_embeddings
 
 
@@ -289,7 +350,8 @@ def main() -> None:
     attribution_dir = args.attribution_dir.resolve()
     output_dir = args.output_dir.resolve() if args.output_dir is not None else attribution_dir / "rank_vs_clap"
     output_dir.mkdir(parents=True, exist_ok=True)
-    cache_path = args.cache_path.resolve() if args.cache_path is not None else output_dir / "clap_embeddings_train_query.npz"
+    cache_base_path = args.cache_path.resolve() if args.cache_path is not None else output_dir / "clap_embeddings"
+    train_cache_path, query_cache_path = split_cache_paths(cache_base_path)
 
     score_meta_path = attribution_dir / "scores_query_x_train.memmap.meta.json"
     query_meta_path = attribution_dir / "query_features.memmap.meta.json"
@@ -333,7 +395,8 @@ def main() -> None:
     train_embeddings, query_embeddings = load_or_compute_clap_embeddings(
         train_paths=train_paths,
         query_paths=query_paths,
-        cache_path=cache_path,
+        train_cache_path=train_cache_path,
+        query_cache_path=query_cache_path,
         clap_model_name=args.clap_model_name,
         clap_device=args.clap_device,
         clap_batch_size=args.clap_batch_size,
@@ -397,7 +460,9 @@ def main() -> None:
         "clap_device": resolve_device(args.clap_device),
         "clap_batch_size": int(args.clap_batch_size),
         "max_rank": int(max_rank),
-        "cache_path": str(cache_path),
+        "cache_base_path": str(cache_base_path),
+        "train_cache_path": str(train_cache_path),
+        "query_cache_path": str(query_cache_path),
         "csv_path": str(csv_path),
         "npy_path": str(npy_path),
         "plot_path": str(plot_path),
