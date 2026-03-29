@@ -5,6 +5,7 @@ MODEL_CONFIG="${MODEL_CONFIG:-model_config_freeze_vae.json}"
 TRAIN_DATASET_CONFIG="${TRAIN_DATASET_CONFIG:-stable_audio_tools/configs/dataset_configs/local_training_custom.json}"
 QUERY_DATASET_CONFIG="${QUERY_DATASET_CONFIG:-stable_audio_tools/configs/dataset_configs/dtrak_generated_queries.json}"
 TRAIN_EXCLUDE_PATHS_FILE="${TRAIN_EXCLUDE_PATHS_FILE:-outputs/dac_dedup/exclude_paths.txt}"
+QUERY_AUDIO_DIR="${QUERY_AUDIO_DIR:-outputs/generated_queries}"
 
 UNWRAPPED_CKPT="${UNWRAPPED_CKPT:-exported_model.ckpt}"
 PRETRANSFORM_CKPT="${PRETRANSFORM_CKPT:-}"
@@ -32,10 +33,10 @@ PARAM_REGEX="${PARAM_REGEX:-layers\.(1[6-9]|2[0-3])\.}"
 
 mkdir -p "${OUT_DIR}" logs
 
-echo "[check] querying generated samples in outputs/generated"
-GEN_COUNT="$(find outputs/generated -maxdepth 1 -type f \( -name '*.wav' -o -name '*.mp3' \) | wc -l | tr -d ' ')"
+echo "[check] querying generated samples in ${QUERY_AUDIO_DIR}"
+GEN_COUNT="$(find "${QUERY_AUDIO_DIR}" -maxdepth 1 -type f \( -name '*.wav' -o -name '*.mp3' \) | wc -l | tr -d ' ')"
 if [[ "${GEN_COUNT}" -lt "${QUERY_COUNT}" ]]; then
-  echo "Expected at least ${QUERY_COUNT} audio files (.wav/.mp3) in outputs/generated, found ${GEN_COUNT}."
+  echo "Expected at least ${QUERY_COUNT} audio files (.wav/.mp3) in ${QUERY_AUDIO_DIR}, found ${GEN_COUNT}."
   exit 1
 fi
 

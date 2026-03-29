@@ -131,30 +131,36 @@ def get_latent_filenames(
         filenames.extend(files)
     return filenames
 
-def load_exclusion_entries(exclude_paths_file: Optional[str]) -> Set[str]:
-    if exclude_paths_file is None:
+def load_path_entries(paths_file: Optional[str], label: str = "path") -> Set[str]:
+    if paths_file is None:
         return set()
 
-    if not os.path.exists(exclude_paths_file):
-        raise FileNotFoundError(f"Exclusion file does not exist: {exclude_paths_file}")
+    if not os.path.exists(paths_file):
+        raise FileNotFoundError(f"{label.capitalize()} file does not exist: {paths_file}")
 
     entries = set()
-    with open(exclude_paths_file, "r") as f:
+    with open(paths_file, "r") as f:
         for line in f:
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
             entries.add(os.path.normpath(line))
 
-    print(f"Loaded {len(entries)} exclusion entries from {exclude_paths_file}")
+    print(f"Loaded {len(entries)} {label} entries from {paths_file}")
     return entries
 
-def should_exclude_file(
+def load_exclusion_entries(exclude_paths_file: Optional[str]) -> Set[str]:
+    return load_path_entries(exclude_paths_file, label="exclusion")
+
+def load_inclusion_entries(include_paths_file: Optional[str]) -> Set[str]:
+    return load_path_entries(include_paths_file, label="inclusion")
+
+def path_matches_entries(
     filename: str,
-    exclusion_entries: Set[str],
+    entries: Set[str],
     roots: Optional[List[str]] = None
 ) -> bool:
-    if not exclusion_entries:
+    if not entries:
         return False
 
     abs_path = os.path.normpath(os.path.abspath(filename))
@@ -177,7 +183,14 @@ def should_exclude_file(
         candidate_paths.add(relpath)
         candidate_paths.add(os.path.splitext(relpath)[0])
 
-    return any(candidate in exclusion_entries for candidate in candidate_paths)
+    return any(candidate in entries for candidate in candidate_paths)
+
+def should_exclude_file(
+    filename: str,
+    exclusion_entries: Set[str],
+    roots: Optional[List[str]] = None
+) -> bool:
+    return path_matches_entries(filename, exclusion_entries, roots)
 
 def filter_excluded_filenames(
     filenames: List[str],
@@ -192,6 +205,21 @@ def filter_excluded_filenames(
         if should_exclude_file(filename, exclusion_entries, roots):
             continue
         kept_filenames.append(filename)
+
+    return kept_filenames
+
+def filter_included_filenames(
+    filenames: List[str],
+    inclusion_entries: Set[str],
+    roots: Optional[List[str]] = None
+) -> List[str]:
+    if not inclusion_entries:
+        return filenames
+
+    kept_filenames = []
+    for filename in filenames:
+        if path_matches_entries(filename, inclusion_entries, roots):
+            kept_filenames.append(filename)
 
     return kept_filenames
 
@@ -215,11 +243,13 @@ class SampleDataset(torch.utils.data.Dataset):
         keywords=None, 
         random_crop=True,
         force_channels="stereo",
-        exclusion_entries: Optional[Set[str]] = None
+        exclusion_entries: Optional[Set[str]] = None,
+        inclusion_entries: Optional[Set[str]] = None
     ):
         super().__init__()
         self.filenames = []
         self.exclusion_entries = exclusion_entries if exclusion_entries is not None else set()
+        self.inclusion_entries = inclusion_entries if inclusion_entries is not None else set()
 
         self.augs = torch.nn.Sequential(
             PhaseFlipper()
@@ -240,6 +270,7 @@ class SampleDataset(torch.utils.data.Dataset):
 
         self.custom_metadata_fns = {}
         excluded_count = 0
+        included_count = 0
 
         for config in configs:
             self.root_paths.append(config.path)
@@ -249,13 +280,21 @@ class SampleDataset(torch.utils.data.Dataset):
                 self.exclusion_entries,
                 roots=[config.path]
             )
+            included_filenames = filter_included_filenames(
+                filtered_filenames,
+                self.inclusion_entries,
+                roots=[config.path]
+            )
             excluded_count += len(dataset_filenames) - len(filtered_filenames)
-            self.filenames.extend(filtered_filenames)
+            included_count += len(included_filenames)
+            self.filenames.extend(included_filenames)
             if config.custom_metadata_fn is not None:
                 self.custom_metadata_fns[config.path] = config.custom_metadata_fn
 
         if self.exclusion_entries:
             print(f'Excluded {excluded_count} files using exclusion list')
+        if self.inclusion_entries:
+            print(f'Included {included_count} files using inclusion list')
         print(f'Found {len(self.filenames)} files')
 
     def load_file(self, filename):
@@ -347,16 +386,19 @@ class PreEncodedDataset(torch.utils.data.Dataset):
         max_length_sec=None,
         random_crop=False,
         latent_extension='npy',
-        exclusion_entries: Optional[Set[str]] = None
+        exclusion_entries: Optional[Set[str]] = None,
+        inclusion_entries: Optional[Set[str]] = None
     ):
         super().__init__()
         self.filenames = []
         self.exclusion_entries = exclusion_entries if exclusion_entries is not None else set()
+        self.inclusion_entries = inclusion_entries if inclusion_entries is not None else set()
 
         self.custom_metadata_fns = {}
 
         self.latent_extension = latent_extension
         excluded_count = 0
+        included_count = 0
 
         for config in configs:
             dataset_filenames = get_latent_filenames(config.path, [latent_extension])
@@ -365,8 +407,14 @@ class PreEncodedDataset(torch.utils.data.Dataset):
                 self.exclusion_entries,
                 roots=[config.path]
             )
+            included_filenames = filter_included_filenames(
+                filtered_filenames,
+                self.inclusion_entries,
+                roots=[config.path]
+            )
             excluded_count += len(dataset_filenames) - len(filtered_filenames)
-            self.filenames.extend(filtered_filenames)
+            included_count += len(included_filenames)
+            self.filenames.extend(included_filenames)
             if config.custom_metadata_fn is not None:
                 self.custom_metadata_fns[config.path] = config.custom_metadata_fn
 
@@ -378,6 +426,8 @@ class PreEncodedDataset(torch.utils.data.Dataset):
 
         if self.exclusion_entries:
             print(f'Excluded {excluded_count} files using exclusion list')
+        if self.inclusion_entries:
+            print(f'Included {included_count} files using inclusion list')
         print(f'Found {len(self.filenames)} files')
 
     def __len__(self):
@@ -901,6 +951,7 @@ def create_dataloader_from_config(dataset_config, batch_size, sample_size, sampl
 
     if dataset_type == "audio_dir":
         exclusion_entries = load_exclusion_entries(dataset_config.get("exclude_paths_file", None))
+        inclusion_entries = load_inclusion_entries(dataset_config.get("include_paths_file", None))
 
         audio_dir_configs = dataset_config.get("datasets", None)
 
@@ -936,7 +987,8 @@ def create_dataloader_from_config(dataset_config, batch_size, sample_size, sampl
             sample_size=sample_size,
             random_crop=dataset_config.get("random_crop", True),
             force_channels=force_channels,
-            exclusion_entries=exclusion_entries
+            exclusion_entries=exclusion_entries,
+            inclusion_entries=inclusion_entries
         )
 
         return torch.utils.data.DataLoader(train_set, batch_size, shuffle=shuffle,
@@ -944,6 +996,7 @@ def create_dataloader_from_config(dataset_config, batch_size, sample_size, sampl
 
     elif dataset_type == "pre_encoded":
         exclusion_entries = load_exclusion_entries(dataset_config.get("exclude_paths_file", None))
+        inclusion_entries = load_inclusion_entries(dataset_config.get("include_paths_file", None))
 
         pre_encoded_dir_configs = dataset_config.get("datasets", None)
 
@@ -988,7 +1041,8 @@ def create_dataloader_from_config(dataset_config, batch_size, sample_size, sampl
             max_length_sec=max_length_sec, 
             random_crop=random_crop, 
             latent_extension=latent_extension,
-            exclusion_entries=exclusion_entries
+            exclusion_entries=exclusion_entries,
+            inclusion_entries=inclusion_entries
         )
 
         return torch.utils.data.DataLoader(train_set, batch_size, shuffle=shuffle,

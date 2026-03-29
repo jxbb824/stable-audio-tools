@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import csv
 import gc
 import json
 import sys
@@ -41,7 +42,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--attribution-dir",
         type=Path,
-        default=Path("outputs/dtrak_attribution_20260225_124956"),
+        default=Path("outputs/groundtruth_models/dtrak_attribution"),
         help="Directory containing D-TRAK score/features outputs.",
     )
     parser.add_argument(
@@ -111,9 +112,9 @@ def read_json(path: Path) -> dict:
         return json.load(f)
 
 
-def read_ids(path: Path) -> list[str]:
-    with path.open("r", encoding="utf-8") as f:
-        return [line.strip() for line in f if line.strip()]
+def read_csv_rows(path: Path) -> list[dict[str, str]]:
+    with path.open("r", encoding="utf-8", newline="") as f:
+        return list(csv.DictReader(f))
 
 
 def resolve_device(device_arg: str) -> str:
@@ -310,6 +311,7 @@ def save_plot(
     std_cosine_by_rank: np.ndarray,
     n_query: int,
     n_train: int,
+    title_suffix: str,
     plot_path: Path,
     dpi: int,
 ) -> None:
@@ -335,7 +337,10 @@ def save_plot(
     )
     plt.xlabel("Influence rank (1 = highest influence)")
     plt.ylabel("CLAP cosine (train sample vs its query sample)")
-    plt.title(f"D-TRAK Influence Rank vs CLAP Cosine (queries={n_query}, train={n_train})")
+    title = f"D-TRAK Influence Rank vs CLAP Cosine (queries={n_query}, train={n_train})"
+    if title_suffix:
+        title += f" {title_suffix}"
+    plt.title(title)
     plt.grid(True, alpha=0.3)
     plt.legend()
     plt.tight_layout()
@@ -354,31 +359,37 @@ def main() -> None:
     train_cache_path, query_cache_path = split_cache_paths(cache_base_path)
 
     score_meta_path = attribution_dir / "scores_query_x_train.memmap.meta.json"
-    query_meta_path = attribution_dir / "query_features.memmap.meta.json"
-    train_meta_path = attribution_dir / "train_features.memmap.meta.json"
     score_path = attribution_dir / "scores_query_x_train.memmap"
+    attribution_meta_path = attribution_dir / "attribution_metadata.json"
+    train_axis_manifest_path = attribution_dir / "train_axis_manifest.csv"
+    query_axis_manifest_path = attribution_dir / "query_axis_manifest.csv"
 
-    for required in [score_meta_path, query_meta_path, train_meta_path, score_path]:
+    for required in [
+        score_meta_path,
+        score_path,
+        attribution_meta_path,
+        train_axis_manifest_path,
+        query_axis_manifest_path,
+    ]:
         if not required.exists():
             raise FileNotFoundError(f"Missing required file: {required}")
 
     score_meta = read_json(score_meta_path)
-    query_meta = read_json(query_meta_path)
-    train_meta = read_json(train_meta_path)
+    attribution_meta = read_json(attribution_meta_path)
 
     n_query, n_train = score_meta["shape"]
     print(f"[2/6] loading score matrix memmap (query={n_query}, train={n_train})", flush=True)
     scores = np.memmap(score_path, dtype=np.float32, mode="r", shape=(n_query, n_train))
 
-    query_ids_path = Path(query_meta["ids_path"])
-    train_ids_path = Path(train_meta["ids_path"])
-    query_paths = read_ids(query_ids_path)
-    train_paths = read_ids(train_ids_path)
+    train_rows = read_csv_rows(train_axis_manifest_path)
+    query_rows = read_csv_rows(query_axis_manifest_path)
+    train_paths = [row["path"] for row in train_rows]
+    query_paths = [row["audio_path"] for row in query_rows]
 
     if len(query_paths) != n_query:
-        raise ValueError(f"Query count mismatch: meta={n_query}, ids={len(query_paths)}")
+        raise ValueError(f"Query count mismatch: meta={n_query}, manifest={len(query_paths)}")
     if len(train_paths) != n_train:
-        raise ValueError(f"Train count mismatch: meta={n_train}, ids={len(train_paths)}")
+        raise ValueError(f"Train count mismatch: meta={n_train}, manifest={len(train_paths)}")
 
     ok_query, missing_query = all_files_exist(query_paths)
     ok_train, missing_train = all_files_exist(train_paths)
@@ -426,6 +437,10 @@ def main() -> None:
     npy_path = output_dir / f"{args.output_prefix}_per_query.npy"
     plot_path = output_dir / f"{args.output_prefix}.png"
     meta_out_path = output_dir / f"{args.output_prefix}.meta.json"
+    title_suffix = ""
+    ensemble_member_count = attribution_meta.get("ensemble_member_count", None)
+    if ensemble_member_count is not None:
+        title_suffix = f"(ensemble={ensemble_member_count})"
 
     csv_data = np.column_stack([ranks, mean_cosine_by_rank, std_cosine_by_rank])
     np.savetxt(
@@ -445,6 +460,7 @@ def main() -> None:
         std_cosine_by_rank=std_cosine_by_rank,
         n_query=n_query,
         n_train=n_train,
+        title_suffix=title_suffix,
         plot_path=plot_path,
         dpi=args.dpi,
     )
@@ -453,8 +469,9 @@ def main() -> None:
         "attribution_dir": str(attribution_dir),
         "score_path": str(score_path),
         "score_shape": [int(n_query), int(n_train)],
-        "train_ids_path": str(train_ids_path),
-        "query_ids_path": str(query_ids_path),
+        "train_axis_manifest_path": str(train_axis_manifest_path),
+        "query_axis_manifest_path": str(query_axis_manifest_path),
+        "ensemble_member_count": ensemble_member_count,
         "clap_model_name": args.clap_model_name,
         "clap_sample_rate": int(CLAP_SAMPLE_RATE),
         "clap_device": resolve_device(args.clap_device),

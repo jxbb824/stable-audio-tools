@@ -3,8 +3,8 @@
   "datasets": [
     {
       "id": "generated_queries",
-      "path": "outputs/generated",
-      "custom_metadata_module": "stable_audio_tools/configs/dataset_configs/custom_metadata/custom_md_generated_from_test.py"
+      "path": "outputs/generated_queries",
+      "custom_metadata_module": "stable_audio_tools/configs/dataset_configs/custom_metadata/custom_md_generated_from_manifest.py"
     }
   ],
   "random_crop": false,

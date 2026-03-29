@@ -36,8 +36,8 @@ except Exception:
     tqdm = None
 
 
-GOOGLE_API_KEY = "AIzaSyAIXNGcRcyo_yraVyLs1CiCfz5SkQV3Io0"
-WAVESPEED_API_KEY = "3144c55d95c005c2a0d53cf96644cba98fc25b5adb285e8d4052c4fd07279b81"
+GOOGLE_API_KEY = "xxx"
+WAVESPEED_API_KEY = "xxx"
 GEMINI_PROMPT = (
     "Provide a high-detail, chronological description of this audio in English. "
     "Write it as a single, continuous narrative from start to finish without using bullet points "

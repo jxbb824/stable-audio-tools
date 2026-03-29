@@ -16,13 +16,13 @@ cd "$SLURM_SUBMIT_DIR"
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate sat-jamendo
 
-ATTRIBUTION_DIR="${ATTRIBUTION_DIR:-outputs/dtrak_attribution_20260225_124956_reuse}"
+ATTRIBUTION_DIR="${ATTRIBUTION_DIR:-outputs/groundtruth_models/dtrak_attribution}"
 OUTPUT_DIR="${OUTPUT_DIR:-${ATTRIBUTION_DIR}/rank_vs_clap}"
 OUTPUT_PREFIX="${OUTPUT_PREFIX:-influence_rank_vs_clap}"
 CLAP_DEVICE="${CLAP_DEVICE:-cuda}"
 CLAP_BATCH_SIZE="${CLAP_BATCH_SIZE:-8}"
 AUDIO_LOAD_BATCH_SIZE="${AUDIO_LOAD_BATCH_SIZE:-4}"
-MAX_RANK="${MAX_RANK:-5000}"
+MAX_RANK="${MAX_RANK:-1000}"
 
 python3 -u scripts/plot_dtrak_rank_vs_clap.py \
   --attribution-dir "${ATTRIBUTION_DIR}" \

@@ -395,10 +395,13 @@ def main() -> None:
         }
 
         batch_size_actual = diffusion_input.shape[0]
+        projected_batch_size = batch_size_actual
+        if projected_batch_size % 16 != 0:
+            projected_batch_size = ((projected_batch_size // 16) + 1) * 16
 
-        # Pre-allocate emb on GPU — accumulate gradients in-place across
-        # timesteps to avoid any extra copies or CPU transfers.
-        emb = torch.zeros(batch_size_actual, grad_dim, device=device)
+        # Pre-allocate emb on GPU using the padded projector batch size up front.
+        # This avoids a second giant allocation on the final partial batch.
+        emb = torch.zeros(projected_batch_size, grad_dim, device=device)
 
         # Disable grad for all params once; re-enable only for selected ones.
         for p in model.parameters():
@@ -470,11 +473,7 @@ def main() -> None:
                   flush=True)
 
         emb.div_(float(len(selected_timesteps)))
-        # CudaProjector (fast_jl) requires batch size to be a multiple of 16.
-        actual_bs = emb.shape[0]
-        if actual_bs % 16 != 0:
-            pad_bs = ((actual_bs // 16) + 1) * 16
-            emb = F.pad(emb, (0, 0, 0, pad_bs - actual_bs))
+        actual_bs = batch_size_actual
         emb = projector.project(emb, model_id=args.model_id)[:actual_bs]
         if used_dim != args.proj_dim:
             emb[:, used_dim:] = 0
