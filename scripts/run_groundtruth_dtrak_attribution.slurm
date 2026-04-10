@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --output=logs/dtrak_groundtruth_%j.out
 #SBATCH --error=logs/dtrak_groundtruth_%j.err
-#SBATCH --time=40:00:00
+#SBATCH --time=5:00:00
 
 set -euo pipefail
 
@@ -18,7 +18,7 @@ MODEL_CONFIG="${MODEL_CONFIG:-model_config_freeze_vae.json}"
 TRAIN_DATASET_CONFIG="${TRAIN_DATASET_CONFIG:-stable_audio_tools/configs/dataset_configs/local_training_custom.json}"
 QUERY_DATASET_CONFIG="${QUERY_DATASET_CONFIG:-stable_audio_tools/configs/dataset_configs/dtrak_generated_queries.json}"
 MODELS_ROOT="${MODELS_ROOT:-outputs/groundtruth_models}"
-ENSEMBLE_MODEL_INDICES="${ENSEMBLE_MODEL_INDICES:-0, 1, 2, 3, 4}"
+ENSEMBLE_MODEL_INDICES="${ENSEMBLE_MODEL_INDICES:-}"
 FULL_MODEL_DIR="${FULL_MODEL_DIR:-outputs/groundtruth_models/full}"
 UNWRAPPED_CKPT="${UNWRAPPED_CKPT:-}"
 OUTPUT_DIR="${OUTPUT_DIR:-outputs/groundtruth_models/dtrak_attribution}"
@@ -28,7 +28,7 @@ BATCH_SIZE="${BATCH_SIZE:-16}"
 NUM_WORKERS="${NUM_WORKERS:-8}"
 DEVICE="${DEVICE:-cuda:0}"
 PROJ_DIM="${PROJ_DIM:-16384}"
-USED_DIM="${USED_DIM:-8192}"
+USED_DIM="${USED_DIM:-16384}"
 K="${K:-10}"
 T_STRATEGY="${T_STRATEGY:-uniform}"
 NUM_TRAIN_STEPS="${NUM_TRAIN_STEPS:-1000}"

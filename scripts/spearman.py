@@ -25,6 +25,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model-ids-path", type=str, default=None)
     parser.add_argument("--query-ids-path", type=str, default=None)
     parser.add_argument("--subset-index-filename", type=str, default="train_index.csv")
+    parser.add_argument(
+        "--subset-aggregation",
+        type=str,
+        choices=("included", "excluded"),
+        default="included",
+        help="Whether to sum scores over samples included in each subset or over the complement.",
+    )
+    parser.add_argument(
+        "--score-label",
+        type=str,
+        default="D-TRAK",
+        help="Label to use in terminal output for the primary score matrix.",
+    )
     parser.add_argument("--output-dir", type=str, default="outputs/groundtruth_models/spearman")
     parser.add_argument("--random-seed", type=int, default=42)
     return parser.parse_args()
@@ -126,10 +139,22 @@ def load_subset_indices(models_root: Path, model_ids: Sequence[str], filename: s
     return subset_indices
 
 
-def aggregate_subset_scores(score_matrix: torch.Tensor, subset_indices: Sequence[Sequence[int]]) -> torch.Tensor:
+def aggregate_subset_scores(
+    score_matrix: torch.Tensor,
+    subset_indices: Sequence[Sequence[int]],
+    aggregation: str,
+) -> torch.Tensor:
+    total_scores = score_matrix.sum(dim=0) if aggregation == "excluded" else None
     approx_rows = []
     for indices in subset_indices:
-        approx_rows.append(score_matrix[indices, :].sum(dim=0))
+        included_sum = score_matrix[indices, :].sum(dim=0)
+        if aggregation == "included":
+            approx_rows.append(included_sum)
+        elif aggregation == "excluded":
+            assert total_scores is not None
+            approx_rows.append(total_scores - included_sum)
+        else:
+            raise ValueError(f"Unsupported subset aggregation: {aggregation}")
     return torch.stack(approx_rows, dim=0)
 
 
@@ -241,7 +266,11 @@ def main() -> None:
         train_count=int(score_matrix.shape[0]),
     )
 
-    dtrak_subset_scores = aggregate_subset_scores(score_matrix, subset_indices)
+    dtrak_subset_scores = aggregate_subset_scores(
+        score_matrix,
+        subset_indices,
+        aggregation=args.subset_aggregation,
+    )
 
     generator = torch.Generator(device="cpu")
     generator.manual_seed(args.random_seed)
@@ -250,12 +279,16 @@ def main() -> None:
         generator=generator,
         dtype=score_matrix.dtype,
     )
-    random_subset_scores = aggregate_subset_scores(random_score_matrix, subset_indices)
+    random_subset_scores = aggregate_subset_scores(
+        random_score_matrix,
+        subset_indices,
+        aggregation=args.subset_aggregation,
+    )
 
     dtrak_summary, dtrak_rows = compute_query_stats(dtrak_subset_scores, groundtruth_matrix, query_ids)
     random_summary, random_rows = compute_query_stats(random_subset_scores, groundtruth_matrix, query_ids)
 
-    torch.save(dtrak_subset_scores, output_dir / "dtrak_subset_query_scores.pt")
+    torch.save(dtrak_subset_scores, output_dir / "score_subset_query_scores.pt")
     torch.save(random_score_matrix, output_dir / "random_scores_train_x_query.pt")
     torch.save(random_subset_scores, output_dir / "random_subset_query_scores.pt")
 
@@ -280,6 +313,8 @@ def main() -> None:
         "groundtruth_path": str(groundtruth_path),
         "models_root": str(models_root),
         "subset_index_filename": args.subset_index_filename,
+        "subset_aggregation": args.subset_aggregation,
+        "score_label": args.score_label,
         "random_seed": args.random_seed,
         "model_count": len(model_ids),
         "train_count": int(score_matrix.shape[0]),
@@ -290,8 +325,8 @@ def main() -> None:
     }
     save_json(output_dir / "spearman_summary.json", summary)
 
-    print(f"D-TRAK average spearman: {dtrak_summary['average_spearman']:.6f}")
-    print(f"D-TRAK Fisher p-value: {dtrak_summary['fisher_pvalue']:.6e}")
+    print(f"{args.score_label} average spearman: {dtrak_summary['average_spearman']:.6f}")
+    print(f"{args.score_label} Fisher p-value: {dtrak_summary['fisher_pvalue']:.6e}")
     print(f"Random average spearman: {random_summary['average_spearman']:.6f}")
     print(f"Random Fisher p-value: {random_summary['fisher_pvalue']:.6e}")
 
