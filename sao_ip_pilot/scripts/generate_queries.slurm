@@ -5,7 +5,7 @@
 #SBATCH --gpus=h100-80:1
 #SBATCH --mem=96G
 #SBATCH --cpus-per-task=8
-#SBATCH --time=24:00:00
+#SBATCH --time=02:00:00
 #SBATCH --output=logs/sao_ip_generate_%j.out
 #SBATCH --error=logs/sao_ip_generate_%j.err
 

@@ -3,9 +3,9 @@
 #SBATCH -p GPU-shared
 #SBATCH -A mth240006p
 #SBATCH --gpus=h100-80:1
-#SBATCH --mem=220G
+#SBATCH --mem=200G
 #SBATCH --cpus-per-task=8
-#SBATCH --time=40:00:00
+#SBATCH --time=16:00:00
 #SBATCH --output=logs/sao_ip_ekfac_%j.out
 #SBATCH --error=logs/sao_ip_ekfac_%j.err
 
@@ -44,14 +44,12 @@ python3 -u sao_ip_pilot/scripts/groundtruth_ekfac_attribution.py \
   --train-batch-size "${TRAIN_BATCH_SIZE:-4}" \
   --query-gradient-compression-bits "${QUERY_GRADIENT_COMPRESSION_BITS:-4}" \
   --linear-layer-start-fraction "${LINEAR_LAYER_START_FRACTION:-0.5}" \
+  --query-count "${QUERY_COUNT:-200}" \
   --seed "${SEED:-42}"
 )
 
 if [[ -n "${TRAIN_COUNT:-}" ]]; then
   CMD+=(--train-count "$TRAIN_COUNT")
-fi
-if [[ -n "${QUERY_COUNT:-}" ]]; then
-  CMD+=(--query-count "$QUERY_COUNT")
 fi
 if [[ -n "${EXTRA_ARGS:-}" ]]; then
   # shellcheck disable=SC2206

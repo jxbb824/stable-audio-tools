@@ -6,7 +6,7 @@
 
 n_sellers: 22
 tracks_per_seller: 50
-num_prompts: 500
+num_prompts: 200
 
 seller_cells:
   - band: low
@@ -26,10 +26,10 @@ seller_cells:
     max_tracks: null
     count: 1
 
-dataset_root: dataset/small-5000
-audio_dir: dataset/small-5000/audio
-raw_tsv: dataset/small-5000/raw_30s.tsv
-meta_tsv: dataset/small-5000/raw.meta.tsv
+dataset_root: dataset/small-20000
+audio_dir: dataset/small-20000/audio
+raw_tsv: dataset/small-20000/raw_30s.tsv
+meta_tsv: dataset/small-20000/raw.meta.tsv
 
 model_config: model_config_freeze_vae.json
 train_dataset_config: sao_ip_pilot/configs/train_dataset.json

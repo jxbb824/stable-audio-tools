@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Select artist sellers from dataset/small-5000 and write SAO pilot manifests.
+Select artist sellers from the configured Jamendo subset and write SAO pilot manifests.
 
-This is the small-5000 version of the collaborator handoff's
+This is the SAO version of the collaborator handoff's
 eda_groupings.py / generate_fallbacks.py path: artists are sellers, and each
 seller contributes a catalog D_j. The output is intentionally simple and is
 consumed by the training, EKFAC aggregation, and a* scripts in this folder.
@@ -21,7 +21,7 @@ from common import ensure_dir, load_config, resolve_repo_path, write_csv, write_
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Build seller/category manifests from dataset/small-5000.")
+    parser = argparse.ArgumentParser(description="Build seller/category manifests from the configured dataset.")
     parser.add_argument("--config", default="sao_ip_pilot/scripts/pilot.yaml")
     parser.add_argument("--n-sellers", type=int, default=None)
     parser.add_argument("--tracks-per-seller", type=int, default=None)

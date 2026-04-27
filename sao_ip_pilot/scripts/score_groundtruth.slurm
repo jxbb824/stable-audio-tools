@@ -5,7 +5,7 @@
 #SBATCH --gpus=h100-80:1
 #SBATCH --mem=120G
 #SBATCH --cpus-per-task=8
-#SBATCH --time=24:00:00
+#SBATCH --time=03:00:00
 #SBATCH --output=logs/sao_ip_groundtruth_%j.out
 #SBATCH --error=logs/sao_ip_groundtruth_%j.err
 
@@ -36,7 +36,7 @@ python3 -u sao_ip_pilot/scripts/groundtruth.py \
   --num-train-steps "${NUM_TRAIN_STEPS:-1000}" \
   --f loss \
   --cfg-dropout-prob "${CFG_DROPOUT_PROB:-0.0}" \
-  --max-examples "${MAX_EXAMPLES:-500}" \
+  --max-examples "${MAX_EXAMPLES:-200}" \
   ${EXTRA_ARGS:-}
 
 python3 -u sao_ip_pilot/scripts/compute_a_star_from_losses.py \

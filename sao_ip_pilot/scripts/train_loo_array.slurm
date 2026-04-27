@@ -5,7 +5,7 @@
 #SBATCH --gpus=h100-80:1
 #SBATCH --mem=250G
 #SBATCH --cpus-per-task=12
-#SBATCH --time=40:00:00
+#SBATCH --time=06:00:00
 #SBATCH --array=1-22
 #SBATCH --output=logs/sao_ip_loo_%A_%a.out
 #SBATCH --error=logs/sao_ip_loo_%A_%a.err
@@ -26,7 +26,7 @@ VAE_CKPT="${VAE_CKPT:-dataset/pretrained_model/vae_model.ckpt}"
 OUTPUT_DIR="${OUTPUT_DIR:-sao_ip_pilot/outputs/models}"
 INCLUDE_PATHS="${INCLUDE_PATHS:-sao_ip_pilot/outputs/selection/selected_paths_loo_${SELLER_INDEX}.txt}"
 BASE_SEED="${BASE_SEED:-42}"
-MAX_EPOCHS="${MAX_EPOCHS:-600}"
+MAX_EPOCHS="${MAX_EPOCHS:-200}"
 
 python3 -u sao_ip_pilot/scripts/finetune_sao.py \
   --model-config "$MODEL_CONFIG" \

@@ -10,7 +10,7 @@ The original `music_ip_pilot` CLAP quality path is intentionally not copied here
 except as background. This folder keeps only the pieces needed for:
 
 ```text
-dataset/small-5000 artist selection
+dataset/small-20000 artist selection
 -> full and leave-one-seller-out SAO fine-tunes
 -> full-model query generation
 -> a* from LOO loss deltas
@@ -33,7 +33,7 @@ To avoid changing the existing SAO groundtruth scorer, model folders are numeric
 
 | File | Meaning |
 |---|---|
-| `outputs/selection/seller_manifest.csv` | 22 selected artist sellers from `dataset/small-5000` |
+| `outputs/selection/seller_manifest.csv` | 22 selected artist sellers from `dataset/small-20000` |
 | `outputs/selection/category_manifest.csv` | training track to seller/category map |
 | `outputs/prompts.json` | fixed prompt set for full-model query generation |
 | `outputs/losses_model_x_query.pt` | loss matrix for full + LOO models |
@@ -48,7 +48,7 @@ Run everything from the repo root with the `sat-jamendo` environment.
 
 ### 1. Select artists and prompts
 
-CPU only. This finds 22 artist sellers from `dataset/small-5000`, targeting about
+CPU only. This finds 22 artist sellers from `dataset/small-20000`, targeting about
 500 selected tracks total, and writes the include-path files used by training.
 
 ```bash
@@ -165,7 +165,7 @@ The default config is [scripts/pilot.yaml](scripts/pilot.yaml):
 ```yaml
 n_sellers: 22
 tracks_per_seller: 50
-num_prompts: 500
+num_prompts: 200
 ```
 
 Seller selection follows the handoff's prolificness-band allocation: low
