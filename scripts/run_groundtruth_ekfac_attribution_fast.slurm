@@ -48,6 +48,7 @@ source ~/miniconda3/etc/profile.d/conda.sh
 conda activate sat-jamendo
 
 export PYTHONPATH="${DIFFUSION_INFLUENCE_ROOT}:${PYTHONPATH:-}"
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 
 CMD=(
   python3 -u scripts/groundtruth_ekfac_attribution.py

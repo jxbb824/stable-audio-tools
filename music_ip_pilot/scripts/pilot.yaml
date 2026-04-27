@@ -1,0 +1,68 @@
+# Music IP Pilot — Pipeline Validation Config
+# Scope: prove the 6-phase pipeline runs end-to-end on tiny scale.
+# To scale up (N or T), edit this file; no code changes needed.
+
+# ── Dataset ─────────────────────────────────────────────────
+# Path A pivot: we bypass HuggingFace's rkstgr/mtg-jamendo (which requires a
+# 109 GiB download even in streaming mode and misses ~75% of MTG's full 55k
+# catalog) and instead download specific tracks from the Freesound CDN mirror
+# via `download_mtg.py`. Seller selection is done locally by the EDA; Phase 1
+# just reads those primaries, decodes MP3s, and writes canonical WAV clips.
+sellers_candidates_json: <HOME>/music_ip_pilot/data/stats/pilot_sellers_candidates.json
+mtg_raw_dir: <DATA_ROOT>/music_ip_pilot/data/mtg_jamendo_raw
+n_sellers: 3                       # N
+tracks_per_seller: 10              # |D_j|
+sample_rate: 32000                 # MusicGen native rate (CLAP resamples to 48k in Phase 5)
+clip_seconds: 8                    # clip length used for fine-tuning and generation
+
+# ── Prompts ─────────────────────────────────────────────────
+n_prompts: 10                      # T test prompts
+# Cross-stratified grid (see build_sellers.build_prompts): floor(T/(N+1))
+# on-genre prompts per seller, remainder filled with an off-genre control.
+# For N=3, T=10: 3 pop + 3 reggae + 3 classical + 1 hip-hop control = 10.
+# On-genre prompts drive Var(â_j) for OLS in Phase 6; off-genre probes false-positives.
+
+# ── Base model ──────────────────────────────────────────────
+base_model: facebook/musicgen-small
+clap_model: laion/clap-htsat-unfused
+models_hub: <DATA_ROOT>/models/hub
+
+# ── Fine-tuning (LoRA) ──────────────────────────────────────
+use_lora: true
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target_modules:               # PEFT target modules on MusicGen decoder
+  # q_proj/v_proj name-matches only the MusicGen decoder attention (T5
+  # uses q/v and EnCodec has no attention), but we still restrict via regex
+  # to the decoder path for robustness against future refactors.
+  # Note: PEFT accepts a regex string as target_modules.
+  - "decoder\\..*\\.(q_proj|v_proj)$"
+finetune_steps: 500                # pilot: small; full: 2000-10000
+finetune_lr: 1.0e-4
+finetune_batch_size: 2
+finetune_grad_accum: 4
+finetune_warmup_steps: 20
+finetune_logging_steps: 20
+
+# ── Generation ──────────────────────────────────────────────
+gen_max_new_tokens: 256            # ~5 seconds at MusicGen's 50Hz token rate
+gen_top_k: 250
+gen_temperature: 1.0
+gen_do_sample: true
+
+# ── Attribution ─────────────────────────────────────────────
+attribution_methods:
+  - embedding_similarity           # pilot: one method
+# future: influence_tracin, shapley_tmc
+
+# ── Analysis ────────────────────────────────────────────────
+bootstrap_samples: 1000            # bootstrap resamples for CIs
+ci_quantile: 0.95                  # 95% CI
+
+# ── Paths (absolute, for the cluster) ─────────────────────────────
+home_root: <HOME>/music_ip_pilot
+data_root: <DATA_ROOT>/music_ip_pilot
+
+# ── Reproducibility ────────────────────────────────────────
+seed: 42

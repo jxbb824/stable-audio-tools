@@ -1,0 +1,35 @@
+{
+  "low": {
+    "artist_id": "artist_337324",
+    "n_tracks": 11,
+    "total_duration_s": 3311.3999999999996,
+    "primary_genre": "pop",
+    "genre_coherence": 1.0,
+    "n_albums": 1
+  },
+  "mid": {
+    "artist_id": "artist_351149",
+    "n_tracks": 15,
+    "total_duration_s": 4238.700000000001,
+    "primary_genre": "reggae",
+    "genre_coherence": 1.0,
+    "n_albums": 1
+  },
+  "high": {
+    "artist_id": "artist_347166",
+    "n_tracks": 41,
+    "total_duration_s": 6688.7,
+    "primary_genre": "classical",
+    "genre_coherence": 1.0,
+    "n_albums": 4
+  },
+  "pool_meta": {
+    "min_tracks": 10,
+    "coherence_floor": 0.7,
+    "pool_size": 133,
+    "tercile_cuts": {
+      "q33": 13.0,
+      "q66": 21.0
+    }
+  }
+}

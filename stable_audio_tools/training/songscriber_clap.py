@@ -172,7 +172,7 @@ class ClapEmbedder:
         for i in iterator:
             chunk = list(audios[i : i + batch_size])
             inputs = self.processor(
-                audio=chunk,
+                audios=chunk,
                 sampling_rate=self.sample_rate,
                 return_tensors="pt",
                 padding=True,

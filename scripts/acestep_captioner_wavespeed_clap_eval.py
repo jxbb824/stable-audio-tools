@@ -253,7 +253,7 @@ def caption_audio_rows(source_rows: list[dict], model_id: str, hf_home: str) -> 
         )
         inputs = processor(
             text=text,
-            audio=audios,
+            audios=audios,
             images=images,
             videos=videos,
             return_tensors="pt",

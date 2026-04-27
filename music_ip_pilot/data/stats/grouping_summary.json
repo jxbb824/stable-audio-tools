@@ -1,0 +1,39 @@
+{
+  "n_tracks": 55609,
+  "n_artists": 3565,
+  "n_albums": 11262,
+  "n_unique_genres": 90,
+  "prolificness": {
+    "mean": 15.59859747545582,
+    "median": 7.0,
+    "max": 548,
+    "q25": 2.0,
+    "q75": 14.0,
+    "q33": 4.0,
+    "q66": 11.0,
+    "share_artists_>=10_tracks": 0.3932678821879383,
+    "share_artists_>=30_tracks": 0.11612903225806452
+  },
+  "duration_hours": {
+    "total": 3769.8761111111107,
+    "mean_per_artist": 63.4481252921926
+  },
+  "coherence": {
+    "mean": 0.45329185001332223,
+    "median": 0.35714285714285715,
+    "share_artists_>=0.7": 0.1584852734922861,
+    "share_artists_==1.0": 0.1267882187938289
+  },
+  "top10_primary_genres": {
+    "electronic": 695,
+    "pop": 274,
+    "ambient": 272,
+    "alternative": 216,
+    "rock": 196,
+    "classical": 178,
+    "soundtrack": 132,
+    "hiphop": 116,
+    "easylistening": 111,
+    "dance": 74
+  }
+}
