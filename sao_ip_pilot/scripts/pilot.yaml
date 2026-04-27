@@ -1,0 +1,48 @@
+# SAO IP pilot config.
+# Model directories use numeric ids to stay compatible with the existing SAO
+# groundtruth scorer:
+#   outputs/models/0      = full model
+#   outputs/models/1..N   = leave-one-seller-out models
+
+n_sellers: 22
+tracks_per_seller: 50
+num_prompts: 500
+
+seller_cells:
+  - band: low
+    min_tracks: 10
+    max_tracks: 15
+    count: 8
+  - band: mid
+    min_tracks: 16
+    max_tracks: 25
+    count: 8
+  - band: high
+    min_tracks: 26
+    max_tracks: 50
+    count: 5
+  - band: extra_high
+    min_tracks: 51
+    max_tracks: null
+    count: 1
+
+dataset_root: dataset/small-5000
+audio_dir: dataset/small-5000/audio
+raw_tsv: dataset/small-5000/raw_30s.tsv
+meta_tsv: dataset/small-5000/raw.meta.tsv
+
+model_config: model_config_freeze_vae.json
+train_dataset_config: sao_ip_pilot/configs/train_dataset.json
+query_dataset_config: sao_ip_pilot/configs/query_dataset.json
+pretrained_ckpt_path: dataset/pretrained_model/model.ckpt
+pretransform_ckpt_path: dataset/pretrained_model/vae_model.ckpt
+
+outputs_dir: sao_ip_pilot/outputs
+selection_dir: sao_ip_pilot/outputs/selection
+models_dir: sao_ip_pilot/outputs/models
+generated_queries_dir: sao_ip_pilot/outputs/generated_queries
+prompts_json: sao_ip_pilot/outputs/prompts.json
+
+min_tracks_per_artist: 10
+coherence_floor: 0.4
+seed: 42

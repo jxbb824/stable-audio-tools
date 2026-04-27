@@ -1,0 +1,12 @@
+{
+  "dataset_type": "audio_dir",
+  "datasets": [
+    {
+      "id": "small_5000",
+      "path": "dataset/small-5000/audio",
+      "custom_metadata_module": "stable_audio_tools/configs/dataset_configs/custom_metadata/custom_md_fma.py"
+    }
+  ],
+  "exclude_paths_file": "outputs/dac_dedup/exclude_paths.txt",
+  "random_crop": true
+}

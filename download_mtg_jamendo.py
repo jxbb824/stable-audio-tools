@@ -74,8 +74,8 @@ def extract_tar(tar_path, audio_dir):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--target", type=int, default=5000)
-    parser.add_argument("--audio-dir", default="dataset/small-5000/audio")
+    parser.add_argument("--target", type=int, default=20000)
+    parser.add_argument("--audio-dir", default="dataset/small-20000/audio")
     args = parser.parse_args()
 
     audio_dir = Path(args.audio_dir)
