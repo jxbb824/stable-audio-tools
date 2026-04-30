@@ -286,7 +286,7 @@ def build_train_dataset(
     base_dataset: Dataset,
     candidate_pool_rows: Sequence[Dict[str, str]],
     dataset_roots: Sequence[str],
-) -> OrderedDataset:
+) -> tuple[OrderedDataset, List[Dict[str, str]]]:
     filenames = getattr(base_dataset, "filenames", None)
     if filenames is None:
         raise TypeError("The train dataset must expose a .filenames attribute for candidate-pool alignment.")
@@ -307,6 +307,8 @@ def build_train_dataset(
             index_by_key.setdefault(os.path.splitext(relpath)[0], index)
 
     ordered_indices: List[int] = []
+    matched_candidate_rows: List[Dict[str, str]] = []
+    unmatched_candidate_rows: List[Dict[str, str]] = []
     for candidate_row in candidate_pool_rows:
         matched_index = None
         for key in candidate_keys(candidate_row):
@@ -314,10 +316,20 @@ def build_train_dataset(
                 matched_index = index_by_key[key]
                 break
         if matched_index is None:
-            raise KeyError(f"Could not match candidate pool row to dataset filenames: {candidate_row}")
+            unmatched_candidate_rows.append(candidate_row)
+            continue
         ordered_indices.append(matched_index)
+        matched_candidate_rows.append(candidate_row)
 
-    return OrderedDataset(base_dataset, ordered_indices)
+    if unmatched_candidate_rows:
+        print(
+            "[ekfac] skipped "
+            f"{len(unmatched_candidate_rows)} candidate-pool rows absent from the train dataset "
+            "(usually because the dataset exclusion list filtered them)."
+        )
+        print(f"[ekfac] first skipped row: {unmatched_candidate_rows[0]}")
+
+    return OrderedDataset(base_dataset, ordered_indices), matched_candidate_rows
 
 
 def build_train_axis_rows(candidate_pool_rows: Sequence[Dict[str, str]]) -> List[Dict[str, Any]]:
@@ -780,7 +792,11 @@ def main() -> None:
 
     train_base_dataset = build_dataset_from_config(train_dataset_config, reference_model_config)
     train_dataset_roots = get_dataset_roots(train_dataset_config)
-    train_dataset = build_train_dataset(train_base_dataset, candidate_pool_rows, train_dataset_roots)
+    train_dataset, candidate_pool_rows = build_train_dataset(
+        train_base_dataset,
+        candidate_pool_rows,
+        train_dataset_roots,
+    )
 
     query_base_dataset = build_dataset_from_config(query_dataset_config, reference_model_config)
     query_count = args.query_count if args.query_count is not None else len(query_base_dataset)

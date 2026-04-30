@@ -171,3 +171,5 @@ outputs/
 
 scripts/tmp_refresh_query_dtrak.sh
 scripts/tmp_refresh_query_dtrak.slurm
+
+*.zip

@@ -17,3 +17,4 @@ conda activate sat-jamendo
 
 python3 -u sao_ip_pilot/scripts/aggregate_ekfac_to_sellers.py
 python3 -u sao_ip_pilot/scripts/estimate_I.py
+python3 -u sao_ip_pilot/scripts/plot_results.py
