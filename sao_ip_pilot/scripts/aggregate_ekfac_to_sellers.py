@@ -18,6 +18,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--query-axis-manifest", default="sao_ip_pilot/outputs/ekfac_attribution/query_axis_manifest.csv")
     parser.add_argument("--category-manifest", default="sao_ip_pilot/outputs/selection/category_manifest.csv")
     parser.add_argument("--output-path", default="sao_ip_pilot/outputs/a_hat_ekfac.csv")
+    parser.add_argument("--score-column", default="a_hat_ekfac")
     parser.add_argument("--aggregation", choices=["sum", "mean"], default="sum")
     return parser.parse_args()
 
@@ -85,7 +86,7 @@ def main() -> None:
                     "seller_id": seller_id,
                     "prompt_id": prompt_id,
                     "query_index": query_index,
-                    "a_hat_ekfac": float(values[query_index]),
+                    args.score_column: float(values[query_index]),
                     "num_train_examples": len(indices),
                     "aggregation": args.aggregation,
                 }
@@ -93,7 +94,7 @@ def main() -> None:
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows).to_csv(output_path, index=False)
-    print(f"[ekfac] wrote {len(rows)} rows -> {output_path}")
+    print(f"[aggregate] wrote {len(rows)} rows -> {output_path}")
 
 
 if __name__ == "__main__":

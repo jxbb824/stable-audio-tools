@@ -30,6 +30,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", default="sao_ip_pilot/outputs/figures")
     parser.add_argument("--marginal-welfare-csv", default="sao_ip_pilot/outputs/marginal_welfare_numbers.csv")
     parser.add_argument("--alpha-ref", type=float, default=2.0)
+    parser.add_argument("--method-label", default="EKFAC")
     return parser.parse_args()
 
 
@@ -82,13 +83,20 @@ def marginal_welfare(snr: np.ndarray, var_astar: np.ndarray | float, alpha: floa
 
 def load_results(args: argparse.Namespace) -> pd.DataFrame:
     ihat = pd.read_csv(resolve_repo_path(args.i_hat_path))
+    if "method" in ihat.columns:
+        methods = sorted(str(method) for method in ihat["method"].dropna().unique())
+        if len(methods) > 1:
+            raise ValueError(
+                "plot_results expects one attribution method per run; "
+                f"got mixed methods: {', '.join(methods)}"
+            )
     sellers = pd.read_csv(resolve_repo_path(args.seller_manifest))
     ahat = pd.read_csv(resolve_repo_path(args.a_hat_path))
 
     counts = (
         ahat.groupby("seller_id", as_index=False)["num_train_examples"]
         .first()
-        .rename(columns={"num_train_examples": "ekfac_train_examples"})
+        .rename(columns={"num_train_examples": "train_examples"})
     )
     df = ihat.merge(sellers, on=["seller_id", "seller_index"], how="left").merge(
         counts, on="seller_id", how="left"
@@ -98,7 +106,7 @@ def load_results(args: argparse.Namespace) -> pd.DataFrame:
     return df.sort_values("seller_index").reset_index(drop=True)
 
 
-def plot_i_scatter(df: pd.DataFrame, output_dir: Path) -> None:
+def plot_i_scatter(df: pd.DataFrame, output_dir: Path, method_label: str) -> None:
     fig, ax = plt.subplots(figsize=(10.5, 4.8))
     x = np.arange(len(df))
     vals = df["I_hat"].to_numpy()
@@ -111,7 +119,7 @@ def plot_i_scatter(df: pd.DataFrame, output_dir: Path) -> None:
     ax.set_xticklabels(df["label"], rotation=45, ha="right")
     ax.set_ylabel(r"$\widehat{\mathcal{I}}_j$")
     ax.set_xlabel("Seller")
-    ax.set_title("Per-seller EKFAC informativeness with bootstrap CI")
+    ax.set_title(f"Per-seller {method_label} informativeness with bootstrap CI")
     ax.grid(axis="y", alpha=0.25)
     add_band_legend(ax)
     fig.tight_layout()
@@ -177,12 +185,12 @@ def plot_sample_count_diagnostics(df: pd.DataFrame, output_dir: Path) -> None:
         ("SNR_hat_calibrated", "Calibrated SNR"),
     ]
     fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.2))
-    x = df["ekfac_train_examples"].to_numpy(dtype=np.float64)
+    x = df["train_examples"].to_numpy(dtype=np.float64)
     for ax, (col, label) in zip(axes, metrics):
         y = df[col].to_numpy(dtype=np.float64)
         ax.scatter(x, y, s=60, c=df["band_color"], edgecolor="black", linewidth=0.45)
         for _, row in df.iterrows():
-            ax.annotate(row["label"], (row["ekfac_train_examples"], row[col]), xytext=(4, 3),
+            ax.annotate(row["label"], (row["train_examples"], row[col]), xytext=(4, 3),
                         textcoords="offset points", fontsize=7)
         if np.isfinite(y).sum() >= 2:
             coef = np.polyfit(x, y, 1)
@@ -200,7 +208,7 @@ def plot_sample_count_diagnostics(df: pd.DataFrame, output_dir: Path) -> None:
             fontsize=8,
             bbox={"boxstyle": "round,pad=0.25", "fc": "white", "ec": "#D1D5DB", "alpha": 0.9},
         )
-        ax.set_xlabel("EKFAC train examples")
+        ax.set_xlabel("Seller train examples")
         ax.set_ylabel(label)
         ax.grid(alpha=0.25)
     axes[0].set_title("Sample count vs Spearman")
@@ -216,7 +224,7 @@ def plot_marginal_welfare(df: pd.DataFrame, output_dir: Path, csv_path: Path, al
         "seller_id",
         "seller_index",
         "prolificness_band",
-        "ekfac_train_examples",
+        "train_examples",
         "I_hat",
         "SNR_hat_calibrated",
         "var_astar",
@@ -289,7 +297,7 @@ def main() -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     df = load_results(args)
 
-    plot_i_scatter(df, output_dir)
+    plot_i_scatter(df, output_dir, args.method_label)
     plot_ranking_comparison(df, output_dir)
     plot_snr_spearman(df, output_dir)
     plot_sample_count_diagnostics(df, output_dir)

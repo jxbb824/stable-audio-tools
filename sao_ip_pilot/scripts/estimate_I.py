@@ -15,6 +15,10 @@ METHODS = {
         "path": "sao_ip_pilot/outputs/a_hat_ekfac.csv",
         "column": "a_hat_ekfac",
     },
+    "dtrak_influence": {
+        "path": "sao_ip_pilot/outputs/a_hat_dtrak.csv",
+        "column": "a_hat_dtrak",
+    },
 }
 
 
@@ -101,6 +105,11 @@ def bootstrap_ci(
 def main() -> None:
     args = parse_args()
     methods = args.method or ["ekfac_influence"]
+    if len(methods) != 1:
+        raise ValueError(
+            "estimate_I writes one attribution method per output. "
+            "Run this script separately for EKFAC and D-TRAK instead of mixing methods."
+        )
     a_star = pd.read_csv(resolve_repo_path(args.a_star_path))
     a_star["prompt_id"] = a_star["prompt_id"].astype(str)
     sellers = read_csv_rows(args.seller_manifest)

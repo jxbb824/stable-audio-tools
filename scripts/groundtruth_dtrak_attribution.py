@@ -206,6 +206,7 @@ def build_axis_rows(
 
     axis_rows: List[Dict[str, Any]] = []
     seen_raw_indices = set()
+    skipped_candidate_rows = 0
     for pool_index, candidate_row in enumerate(candidate_pool_rows):
         match_index = None
         for key in candidate_keys(candidate_row):
@@ -213,11 +214,13 @@ def build_axis_rows(
                 match_index = raw_index_by_key[key]
                 break
         if match_index is None:
-            raise KeyError(f"Could not match candidate pool row to train ids: {candidate_row}")
+            skipped_candidate_rows += 1
+            continue
+        train_axis_index = len(axis_rows)
         seen_raw_indices.add(match_index)
         axis_rows.append(
             {
-                "train_axis_index": pool_index,
+                "train_axis_index": train_axis_index,
                 "raw_train_index": match_index,
                 "pool_index": int(candidate_row["pool_index"]),
                 "global_index": int(candidate_row["global_index"]),
@@ -228,6 +231,12 @@ def build_axis_rows(
                 "relpath": candidate_row["relpath"],
                 "train_id": raw_train_ids[match_index],
             }
+        )
+    if skipped_candidate_rows:
+        print(
+            f"[dtrak] skipped {skipped_candidate_rows} candidate_pool rows that were not "
+            "present in the actual train feature axis.",
+            flush=True,
         )
     if len(seen_raw_indices) != len(raw_train_ids):
         raise ValueError(
@@ -515,8 +524,16 @@ def main() -> None:
 
         raw_train_ids = read_text_lines(Path(train_feature_meta["ids_path"]))
         query_ids = read_text_lines(Path(query_feature_meta["ids_path"]))
-        if len(raw_train_ids) != train_count:
-            raise ValueError(f"Expected {train_count} train ids, found {len(raw_train_ids)} for member {member_index}.")
+        if len(raw_train_ids) > train_count:
+            raise ValueError(
+                f"Expected at most {train_count} train ids, found {len(raw_train_ids)} for member {member_index}."
+            )
+        if len(raw_train_ids) < train_count:
+            print(
+                f"[dtrak] train feature axis has {len(raw_train_ids)} rows, while candidate_pool has "
+                f"{train_count}; this can happen when the dataset config excludes selected files.",
+                flush=True,
+            )
         if len(query_ids) != query_count:
             raise ValueError(f"Expected {query_count} query ids, found {len(query_ids)} for member {member_index}.")
 
