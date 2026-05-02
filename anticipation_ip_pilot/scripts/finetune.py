@@ -1,5 +1,5 @@
 import torch
-from transformers import GPT2LMHeadModel, GPT2Config
+from transformers import GPT2LMHeadModel
 from transformers import Trainer, TrainingArguments
 from transformers import DataCollatorForLanguageModeling, PreTrainedTokenizer
 import numpy as np
@@ -137,22 +137,8 @@ def main():
     
     # Load pretrained model
     logging.info(f"Loading pretrained model from {args.pretrained_model_path}")
-    try:
-        model = GPT2LMHeadModel.from_pretrained(args.pretrained_model_path).cuda()
-        logging.info("Successfully loaded pretrained model")
-    except Exception as e:
-        logging.error(f"Error loading model: {e}")
-        # Fallback to creating a model with default config if loading fails
-        logging.warning("Falling back to default configuration")
-        model_config = GPT2Config(
-            vocab_size=55028,
-            n_positions=1024,
-            n_ctx=1024,
-            n_embd=768,
-            n_layer=12,
-            n_head=12,
-        )
-        model = GPT2LMHeadModel(model_config)
+    model = GPT2LMHeadModel.from_pretrained(args.pretrained_model_path).cuda()
+    logging.info("Successfully loaded pretrained model")
     
     # Load datasets
     # `num_samples` in TextDataset constructor means it loads the first N samples.

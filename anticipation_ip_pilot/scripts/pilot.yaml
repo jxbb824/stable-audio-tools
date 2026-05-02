@@ -2,7 +2,7 @@
 # Full model trains on all train_v2 rows. Each LOO model removes one selected
 # artist/seller from that same full training file.
 
-n_sellers: 200
+n_sellers: 100
 num_prompts: 500
 seed: 42
 
@@ -18,11 +18,16 @@ selection_dir: anticipation_ip_pilot/outputs/selection
 models_dir: anticipation_ip_pilot/outputs/models
 queries_file: anticipation_ip_pilot/outputs/queries/generated_samples_prompted_500.txt
 
-# Artist selection: draw artists without replacement with target counts sampled
-# from a clipped normal-like distribution over observed artist clip counts.
-min_train_examples_per_seller: 5
-seller_count_mean: null
-seller_count_std: null
+# Artist selection: eligible if >= min_train_examples_per_seller tracks; stratify by
+# corpus quartiles of track counts among eligible artists; sample seller_band_quotas
+# per stratum without replacement (RNG seed); shortfalls topped up from remaining pool.
+min_train_examples_per_seller: 25
+# Ratios 8:8:5:1 scaled to n_sellers=100 (36+36+23+5).
+seller_band_quotas:
+  low: 36
+  mid: 36
+  high: 23
+  extra_high: 5
 seller_count_min: null
 seller_count_max: null
 

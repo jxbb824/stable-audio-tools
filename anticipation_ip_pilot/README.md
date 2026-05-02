@@ -6,7 +6,7 @@ This is the SAO-style IP pilot for the symbolic Anticipation/TheoryTab setting, 
 
 - Training corpus: `anticipation_ip_pilot/data/finetune/train_v2.txt` with 28,000 tokenized songs.
 - Query set: first 500 rows of `anticipation_ip_pilot/data/finetune/generated_samples_prompted.txt`.
-- Sellers: 200 artists selected from `train_v2` via `anticipation_ip_pilot/data/metadata/tt_data_hashed.csv`.
+- Sellers: 100 artists selected from `train_v2` via `anticipation_ip_pilot/data/metadata/tt_data_hashed.csv`.
 - Full model: trained on all 28,000 rows.
 - LOO model for seller `j`: trained on all rows except the rows belonging to that artist.
 - Ground truth: per-seller, per-query NLL difference:
@@ -58,6 +58,6 @@ Set `CONDA_ENV=<env>` if your installed environment is not named `sat-jamendo`.
 
 On an H100-80GB, 5-epoch full/LOO training at batch size 4 ran at about 14.1 steps/s, using about 13GB GPU memory. A full 35k-step run should take about 42 minutes plus checkpoint saving; the slurm limit is set to 1:15:00.
 
-Ground-truth scoring measured about 18 seconds for one seller over 500 queries using temporary smoke-test models. The full 200-seller run should fit within the 1:15:00 slurm limit.
+Ground-truth scoring measured about 18 seconds for one seller over 500 queries using temporary smoke-test models. The full 100-seller run should fit within the 1:15:00 slurm limit.
 
 LoGra batch size 8 entered train-gradient caching stably at about 20GB GPU memory and near-full GPU utilization. The train cache alone extrapolates to about 12 minutes; the slurm limit is set to 2:00:00 to cover IFVP and test attribution.
