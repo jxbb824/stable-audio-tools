@@ -1,0 +1,48 @@
+# Anticipation symbolic IP pilot.
+# Full model trains on all train_v2 rows. Each LOO model removes one selected
+# artist/seller from that same full training file.
+
+n_sellers: 200
+num_prompts: 500
+seed: 42
+
+dataset_dir: anticipation_ip_pilot/data/finetune
+train_file: anticipation_ip_pilot/data/finetune/train_v2.txt
+valid_file: anticipation_ip_pilot/data/finetune/test_v2.txt
+generated_file: anticipation_ip_pilot/data/finetune/generated_samples_prompted.txt
+metadata_csv: anticipation_ip_pilot/data/metadata/tt_data_hashed.csv
+
+pretrained_model_path: stanford-crfm/music-small-800k
+outputs_dir: anticipation_ip_pilot/outputs
+selection_dir: anticipation_ip_pilot/outputs/selection
+models_dir: anticipation_ip_pilot/outputs/models
+queries_file: anticipation_ip_pilot/outputs/queries/generated_samples_prompted_500.txt
+
+# Artist selection: draw artists without replacement with target counts sampled
+# from a clipped normal-like distribution over observed artist clip counts.
+min_train_examples_per_seller: 5
+seller_count_mean: null
+seller_count_std: null
+seller_count_min: null
+seller_count_max: null
+
+training:
+  epochs: 5
+  batch_size: 4
+  gradient_accumulation_steps: 1
+  learning_rate: 2.0e-5
+
+attribution:
+  batch_size_logra: 8
+  batch_size_trak: 2
+  trak_num_checkpoints: 5
+  trak_project_dim: 8192
+  trak_regularization: 0.01
+  logra_project_dim: 4096
+  logra_damping: 0.01
+
+slurm:
+  partition: GPU-shared
+  gres: gpu:h100-80:1
+  account: mth240006p
+  conda_env: sat-jamendo

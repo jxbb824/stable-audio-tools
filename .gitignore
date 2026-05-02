@@ -173,3 +173,7 @@ scripts/tmp_refresh_query_dtrak.sh
 scripts/tmp_refresh_query_dtrak.slurm
 
 *.zip
+
+anticipation_ip_pilot/data/finetune/*.txt
+anticipation_ip_pilot/outputs/
+anticipation_ip_pilot/logs/
