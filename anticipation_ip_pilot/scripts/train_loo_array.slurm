@@ -6,7 +6,7 @@
 #SBATCH --mem=96G
 #SBATCH --cpus-per-task=8
 #SBATCH --array=0-99%8
-#SBATCH --time=1:15:00
+#SBATCH --time=3:00:00
 #SBATCH --output=anticipation_ip_pilot/logs/loo_%A_%a.out
 #SBATCH --error=anticipation_ip_pilot/logs/loo_%A_%a.err
 
@@ -31,8 +31,8 @@ python anticipation_ip_pilot/scripts/finetune.py \
   --valid_file "${VALID_FILE:-anticipation_ip_pilot/data/finetune/test_v2.txt}" \
   --output_dir "$OUT_DIR" \
   --exclude_indices "$EXCLUDE_INDICES" \
-  --epochs "${EPOCHS:-5}" \
-  --batch_size "${BATCH_SIZE:-4}" \
+  --epochs "${EPOCHS:-20}" \
+  --batch_size "${BATCH_SIZE:-8}" \
   --gradient_accumulation_steps "${GRADIENT_ACCUMULATION_STEPS:-1}" \
   --learning_rate "${LEARNING_RATE:-2e-5}" \
   --seed "${SEED:-42}"

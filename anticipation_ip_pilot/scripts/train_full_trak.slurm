@@ -5,7 +5,7 @@
 #SBATCH --gpus=h100-80:1
 #SBATCH --mem=96G
 #SBATCH --cpus-per-task=8
-#SBATCH --time=1:15:00
+#SBATCH --time=3:00:00
 #SBATCH --output=anticipation_ip_pilot/logs/full_%j.out
 #SBATCH --error=anticipation_ip_pilot/logs/full_%j.err
 
@@ -25,8 +25,8 @@ python anticipation_ip_pilot/scripts/finetune_trak_checkpoints.py \
   --train_file "${TRAIN_FILE:-anticipation_ip_pilot/data/finetune/train_v2.txt}" \
   --valid_file "${VALID_FILE:-anticipation_ip_pilot/data/finetune/test_v2.txt}" \
   --output_dir "${OUTPUT_DIR:-anticipation_ip_pilot/outputs/models/full}" \
-  --epochs "${EPOCHS:-5}" \
-  --batch_size "${BATCH_SIZE:-4}" \
+  --epochs "${EPOCHS:-20}" \
+  --batch_size "${BATCH_SIZE:-8}" \
   --gradient_accumulation_steps "${GRADIENT_ACCUMULATION_STEPS:-1}" \
   --learning_rate "${LEARNING_RATE:-2e-5}" \
   --seed "${SEED:-42}"
