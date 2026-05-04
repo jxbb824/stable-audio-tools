@@ -85,7 +85,8 @@ def main() -> None:
     train_dataloader = DataLoader(train_dataset, collate_fn=default_data_collator, batch_size=args.batch_size, shuffle=False)
     eval_dataloader = DataLoader(eval_dataset, collate_fn=default_data_collator, batch_size=args.batch_size, shuffle=False)
 
-    checkpoints = [os.path.join(args.checkpoint_dir, str(i)) for i in range(args.num_checkpoints)]
+    checkpoint_ids = sorted(int(p.name) for p in Path(args.checkpoint_dir).iterdir() if p.name.isdigit())[-args.num_checkpoints :]
+    checkpoints = [os.path.join(args.checkpoint_dir, str(i)) for i in checkpoint_ids]
     model_path = os.path.join(args.checkpoint_dir, "full_model")
     if not os.path.isdir(model_path):
         raise FileNotFoundError(f"Missing full model directory: {model_path}")

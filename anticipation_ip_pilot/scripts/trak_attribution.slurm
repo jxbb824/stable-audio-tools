@@ -5,7 +5,7 @@
 #SBATCH --gpus=h100-80:1
 #SBATCH --mem=128G
 #SBATCH --cpus-per-task=8
-#SBATCH --time=7:00:00
+#SBATCH --time=15:00:00
 #SBATCH --output=anticipation_ip_pilot/logs/trak_%j.out
 #SBATCH --error=anticipation_ip_pilot/logs/trak_%j.err
 
@@ -34,7 +34,6 @@ python anticipation_ip_pilot/scripts/score_trak.py \
   --num_prompts "${NUM_PROMPTS:-500}" \
   --seed "${SEED:-42}" \
   --valid_is_generated \
-  --layer_name "${LAYER_NAME:-transformer.h.11.mlp.c_proj.weight}" \
   --output_filename score_TRAK.pt
 
 python anticipation_ip_pilot/scripts/aggregate_scores_to_sellers.py \
