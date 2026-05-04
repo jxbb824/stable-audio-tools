@@ -5,7 +5,7 @@
 #SBATCH --gpus=h100-80:1
 #SBATCH --mem=128G
 #SBATCH --cpus-per-task=8
-#SBATCH --time=6:00:00
+#SBATCH --time=7:00:00
 #SBATCH --output=anticipation_ip_pilot/logs/trak_%j.out
 #SBATCH --error=anticipation_ip_pilot/logs/trak_%j.err
 
@@ -28,10 +28,13 @@ python anticipation_ip_pilot/scripts/score_trak.py \
   --batch_size "${BATCH_SIZE:-2}" \
   --num_checkpoints "${NUM_CHECKPOINTS:-5}" \
   --proj_dim "${PROJ_DIM:-8192}" \
+  --proj_type "${PROJ_TYPE:-random_mask}" \
+  --proj_max_batch_size "${PROJ_MAX_BATCH_SIZE:-40}" \
   --regularization "${REGULARIZATION:-0.01}" \
   --num_prompts "${NUM_PROMPTS:-500}" \
   --seed "${SEED:-42}" \
   --valid_is_generated \
+  --layer_name "${LAYER_NAME:-transformer.h.11.mlp.c_proj.weight}" \
   --output_filename score_TRAK.pt
 
 python anticipation_ip_pilot/scripts/aggregate_scores_to_sellers.py \

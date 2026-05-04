@@ -5,7 +5,7 @@
 #SBATCH --gpus=h100-80:1
 #SBATCH --mem=96G
 #SBATCH --cpus-per-task=8
-#SBATCH --array=0-99%8
+#SBATCH --array=0-99
 #SBATCH --time=3:00:00
 #SBATCH --output=anticipation_ip_pilot/logs/loo_%A_%a.out
 #SBATCH --error=anticipation_ip_pilot/logs/loo_%A_%a.err

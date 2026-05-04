@@ -20,6 +20,11 @@ from anticipation.vocab import AUTOREGRESS
 from dattri.algorithm.trak import TRAKAttributor
 from dattri.task import AttributionTask
 
+try:
+    from dattri.params.projection import TRAKProjectionParams
+except ModuleNotFoundError:
+    TRAKProjectionParams = None
+
 
 class TextDataset(Dataset):
     def __init__(self, file_path: str, max_length: int = 1024, num_samples: int | None = None, is_generated: bool = False):
@@ -55,6 +60,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch_size", type=int, default=2)
     parser.add_argument("--num_checkpoints", type=int, default=5)
     parser.add_argument("--proj_dim", type=int, default=8192)
+    parser.add_argument("--proj_max_batch_size", type=int, default=40)
+    parser.add_argument("--proj_type", default="normal", choices=["normal", "rademacher", "random_mask", "sjlt"])
+    parser.add_argument("--layer_name", action="append", default=None)
     parser.add_argument("--regularization", type=float, default=0.01)
     parser.add_argument("--num_prompts", type=int, default=500)
     parser.add_argument("--seed", type=int, default=42)
@@ -88,27 +96,39 @@ def main() -> None:
     model = AutoModelForCausalLM.from_pretrained(model_path, attn_implementation="eager").to(device)
     model.eval()
 
+    def batch_inputs(batch):
+        input_ids = batch["input_ids"].to(device)
+        attention_mask = batch["attention_mask"].to(device)
+        labels = batch["labels"].to(device)
+        if input_ids.ndim == 1:
+            input_ids = input_ids.unsqueeze(0)
+            attention_mask = attention_mask.unsqueeze(0)
+            labels = labels.unsqueeze(0)
+        return input_ids, attention_mask, labels
+
     def f(params, batch):
+        input_ids, attention_mask, labels = batch_inputs(batch)
         outputs = torch.func.functional_call(
             model,
             params,
-            batch["input_ids"].to(device),
+            input_ids,
             kwargs={
-                "attention_mask": batch["attention_mask"].to(device),
-                "labels": batch["labels"].to(device),
+                "attention_mask": attention_mask,
+                "labels": labels,
             },
         )
-        logp = -outputs.loss
-        return logp - torch.log(1 - torch.exp(logp))
+        p = torch.exp(-outputs.loss).clamp(max=1 - 1e-7)
+        return torch.log(p) - torch.log1p(-p)
 
     def m(params, batch):
+        input_ids, attention_mask, labels = batch_inputs(batch)
         outputs = torch.func.functional_call(
             model,
             params,
-            batch["input_ids"].to(device),
+            input_ids,
             kwargs={
-                "attention_mask": batch["attention_mask"].to(device),
-                "labels": batch["labels"].to(device),
+                "attention_mask": attention_mask,
+                "labels": labels,
             },
         )
         return torch.exp(-outputs.loss)
@@ -124,18 +144,34 @@ def main() -> None:
         checkpoints=checkpoints,
         checkpoints_load_func=checkpoints_load_func,
     )
-    attributor = TRAKAttributor(
-        task=task,
-        correct_probability_func=m,
-        device=device,
-        projector_kwargs={
-            "device": device,
-            "proj_dim": args.proj_dim,
-            "proj_type": "random_mask",
-            "proj_max_batch_size": 40,
-        },
-        regularization=args.regularization,
-    )
+    projector_kwargs = {
+        "device": device,
+        "proj_dim": args.proj_dim,
+        "proj_type": args.proj_type,
+        "proj_max_batch_size": args.proj_max_batch_size,
+    }
+    if TRAKProjectionParams is None:
+        attributor = TRAKAttributor(
+            task=task,
+            correct_probability_func=m,
+            device=device,
+            projector_kwargs=projector_kwargs,
+            layer_name=args.layer_name,
+            regularization=args.regularization,
+        )
+    else:
+        projector_kwargs.pop("device")
+        attributor = TRAKAttributor(
+            task=task,
+            correct_probability_func=m,
+            device=device,
+            proj_params=TRAKProjectionParams(**projector_kwargs),
+            layer_name=args.layer_name,
+            regularization=args.regularization,
+        )
+    if args.layer_name:
+        print(f"Using TRAK layer_name={args.layer_name}")
+    print(f"Using TRAK projection type={args.proj_type}, proj_dim={args.proj_dim}")
 
     print("Caching train dataloader...")
     attributor.cache(train_dataloader)
