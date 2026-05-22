@@ -115,6 +115,8 @@ def parse_args():
     parser.add_argument('--subset_ratio', type=float, default=1.0,
                         help='Ratio of training data to randomly select (0.0 to 1.0). Applied to the loaded training data.')
     parser.add_argument('--seed', type=int, default=42, help="Random seed for reproducibility of subset sampling and training.")
+    parser.add_argument('--include_indices_file', type=str, default='',
+                        help='Path to file with comma-separated indices to include (restrict training to these rows only).')
     return parser.parse_args()
 
 
@@ -183,7 +185,13 @@ def main():
     
     # Load datasets (same pipeline and subset sampling)
     full_train_dataset = TextDataset(args.train_file)
-    
+
+    include_indices = None
+    if args.include_indices_file:
+        with open(args.include_indices_file) as fh:
+            include_indices = set(int(x) for x in fh.read().split(',') if x.strip())
+        logging.info(f"Restricting to {len(include_indices)} indices from {args.include_indices_file}")
+
     train_indices_to_save = list(range(len(full_train_dataset)))
     actual_train_dataset = full_train_dataset
 
@@ -194,24 +202,28 @@ def main():
         elif args.subset_ratio > 1.0:
             logging.warning(f"subset_ratio ({args.subset_ratio}) is greater than 1.0. Using full loaded dataset.")
     
-    if 0.0 < args.subset_ratio < 1.0:
-        if len(full_train_dataset) == 0:
-            logging.warning("Full training dataset is empty, cannot create a subset.")
-        else:
-            num_selected_samples = int(len(full_train_dataset) * args.subset_ratio)
-            if num_selected_samples == 0 and len(full_train_dataset) > 0:
-                num_selected_samples = 1 
-            
-            logging.info(f"Attempting to select {num_selected_samples} out of {len(full_train_dataset)} training samples.")
+    if include_indices is not None:
+        base_indices = sorted(i for i in include_indices if i < len(full_train_dataset))
+    else:
+        base_indices = list(range(len(full_train_dataset)))
 
-            original_indices = list(range(len(full_train_dataset)))
-            selected_indices_for_subset = random.sample(original_indices, num_selected_samples)
-            
+    if 0.0 < args.subset_ratio < 1.0:
+        if len(base_indices) == 0:
+            logging.warning("No indices available after include filtering, cannot create a subset.")
+        else:
+            num_selected_samples = int(len(base_indices) * args.subset_ratio)
+            if num_selected_samples == 0:
+                num_selected_samples = 1
+
+            logging.info(f"Attempting to select {num_selected_samples} out of {len(base_indices)} training samples.")
+            selected_indices_for_subset = random.sample(base_indices, num_selected_samples)
             actual_train_dataset = Subset(full_train_dataset, selected_indices_for_subset)
             train_indices_to_save = selected_indices_for_subset
             logging.info(f"Randomly selected {len(actual_train_dataset)} samples for training (ratio: {args.subset_ratio}).")
     else:
-        logging.info(f"Using full loaded training dataset ({len(actual_train_dataset)} samples).")
+        actual_train_dataset = Subset(full_train_dataset, base_indices)
+        train_indices_to_save = base_indices
+        logging.info(f"Using {len(actual_train_dataset)} samples for training.")
 
     if len(actual_train_dataset) == 0:
         logging.error("No training samples available after subset selection. Exiting.")

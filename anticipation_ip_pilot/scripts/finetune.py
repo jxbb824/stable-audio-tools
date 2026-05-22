@@ -117,6 +117,8 @@ def parse_args():
     parser.add_argument('--seed', type=int, default=42, help="Random seed for reproducibility of subset sampling and training.")
     parser.add_argument('--exclude_indices', type=str, default='',
                         help='Comma-separated list of training indices to exclude (e.g., "123,456,789")')
+    parser.add_argument('--include_indices_file', type=str, default='',
+                        help='Path to file with comma-separated indices to include (restrict training to these rows only).')
 
     return parser.parse_args()
 
@@ -144,7 +146,13 @@ def main():
     # `num_samples` in TextDataset constructor means it loads the first N samples.
     # `subset_ratio` will then be applied to these loaded samples.
     full_train_dataset = TextDataset(args.train_file)
-    
+
+    include_indices = None
+    if args.include_indices_file:
+        with open(args.include_indices_file) as fh:
+            include_indices = set(int(x) for x in fh.read().split(',') if x.strip())
+        logging.info(f"Restricting to {len(include_indices)} indices from {args.include_indices_file}")
+
     # Parse excluded indices
     exclude_indices = set()
     if args.exclude_indices:
@@ -155,7 +163,6 @@ def main():
             logging.error(f"Invalid exclude_indices format: {e}")
             return
     
-    # Apply subset sampling if ratio is less than 1.0
     train_indices_to_save = list(range(len(full_train_dataset)))
     actual_train_dataset = full_train_dataset
 
@@ -165,42 +172,35 @@ def main():
             return
         elif args.subset_ratio > 1.0:
             logging.warning(f"subset_ratio ({args.subset_ratio}) is greater than 1.0. Using full loaded dataset.")
-        # else: subset_ratio < 0, also invalid but covered by the > 0 check for actual subsetting
-    
-    # Apply exclusion first (before subset sampling)
-    if exclude_indices:
-        original_indices = [i for i in range(len(full_train_dataset)) if i not in exclude_indices]
-        logging.info(f"After exclusion: {len(original_indices)} samples remain (removed {len(exclude_indices)}).")
-    else:
-        original_indices = list(range(len(full_train_dataset)))
-    
-    if len(original_indices) == 0:
-        logging.error("No training samples remain after exclusion. Exiting.")
-        return
-    
-    if 0.0 < args.subset_ratio < 1.0:
-        if len(original_indices) == 0:
-            logging.warning("No indices available after exclusion, cannot create a subset.")
-        else:
-            num_selected_samples = int(len(original_indices) * args.subset_ratio)
-            if num_selected_samples == 0 and len(original_indices) > 0: # Ensure at least one sample if possible
-                num_selected_samples = 1 
-            
-            logging.info(f"Attempting to select {num_selected_samples} out of {len(original_indices)} training samples.")
 
-            selected_indices_for_subset = random.sample(original_indices, num_selected_samples)
-            
-            actual_train_dataset = Subset(full_train_dataset, selected_indices_for_subset)
-            train_indices_to_save = selected_indices_for_subset # These are indices within full_train_dataset
-            logging.info(f"Randomly selected {len(actual_train_dataset)} samples for training (ratio: {args.subset_ratio}).")
+    if include_indices is not None:
+        base_indices = sorted(i for i in include_indices if i < len(full_train_dataset))
     else:
-        # Use all non-excluded indices
-        if exclude_indices:
-            actual_train_dataset = Subset(full_train_dataset, original_indices)
-            train_indices_to_save = original_indices
-            logging.info(f"Using {len(actual_train_dataset)} samples after exclusion.")
-        else:
-            logging.info(f"Using full loaded training dataset ({len(actual_train_dataset)} samples).")
+        base_indices = list(range(len(full_train_dataset)))
+
+    if exclude_indices:
+        original_indices = [i for i in base_indices if i not in exclude_indices]
+        logging.info(f"After exclusion: {len(original_indices)} samples remain (removed {len(exclude_indices)} from {len(base_indices)}).")
+    else:
+        original_indices = base_indices
+
+    if len(original_indices) == 0:
+        logging.error("No training samples remain after filtering. Exiting.")
+        return
+
+    if 0.0 < args.subset_ratio < 1.0:
+        num_selected_samples = int(len(original_indices) * args.subset_ratio)
+        if num_selected_samples == 0:
+            num_selected_samples = 1
+        logging.info(f"Attempting to select {num_selected_samples} out of {len(original_indices)} training samples.")
+        selected_indices_for_subset = random.sample(original_indices, num_selected_samples)
+        actual_train_dataset = Subset(full_train_dataset, selected_indices_for_subset)
+        train_indices_to_save = selected_indices_for_subset
+        logging.info(f"Randomly selected {len(actual_train_dataset)} samples for training (ratio: {args.subset_ratio}).")
+    else:
+        actual_train_dataset = Subset(full_train_dataset, original_indices)
+        train_indices_to_save = original_indices
+        logging.info(f"Using {len(actual_train_dataset)} samples for training.")
 
     if len(actual_train_dataset) == 0:
         logging.error("No training samples available after subset selection. Exiting.")

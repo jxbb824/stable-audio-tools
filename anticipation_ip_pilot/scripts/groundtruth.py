@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import DataLoader, Dataset
+from tqdm import tqdm
 from transformers import AutoModelForCausalLM, default_data_collator
 
 PILOT_ROOT = Path(__file__).resolve().parents[1]
@@ -57,7 +58,7 @@ def score_model(model_path: Path, dataloader: DataLoader, device: torch.device) 
     model.eval()
     losses: list[float] = []
     with torch.no_grad():
-        for batch in dataloader:
+        for batch in tqdm(dataloader, desc="Batches", leave=False):
             batch_size = int(batch["input_ids"].shape[0])
             for row_idx in range(batch_size):
                 outputs = model(
@@ -101,7 +102,7 @@ def main() -> None:
     loo_rows = []
     astar_rows = []
     loo_root = resolve_repo_path(args.loo_root)
-    for seller in sellers:
+    for seller in tqdm(sellers, desc="Sellers"):
         seller_id = seller["seller_id"]
         seller_index = int(seller["seller_index"])
         losses = score_model(model_dir(loo_root / seller_id), dataloader, device)

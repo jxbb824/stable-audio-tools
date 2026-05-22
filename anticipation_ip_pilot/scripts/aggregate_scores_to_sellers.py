@@ -21,13 +21,26 @@ def main() -> None:
     parser.add_argument("--output-path", required=True)
     parser.add_argument("--score-column", required=True)
     parser.add_argument("--score-sign", type=float, default=1.0)
+    parser.add_argument("--include_indices_file", type=str, default="",
+                        help="Path to file with comma-separated global train indices used to build the score matrix. "
+                             "When provided, global train_indices are remapped to local row positions in the score tensor.")
     args = parser.parse_args()
 
     sellers = read_csv_rows(args.seller_manifest)
     queries = read_csv_rows(args.query_manifest)
     score = torch.load(resolve_repo_path(args.score_path), map_location="cpu", weights_only=False).float()
-    n_train = max(max(parse_indices(row["train_indices"])) for row in sellers) + 1
     n_query = len(queries)
+
+    # Build global→local index mapping when score rows are a subset of train_v2.txt
+    global_to_local: dict[int, int] = {}
+    if args.include_indices_file:
+        with open(resolve_repo_path(args.include_indices_file)) as fh:
+            global_indices = [int(x) for x in fh.read().split(",") if x.strip()]
+        global_to_local = {g: l for l, g in enumerate(global_indices)}
+        n_train = len(global_indices)
+    else:
+        n_train = max(max(parse_indices(row["train_indices"])) for row in sellers) + 1
+
     if score.shape[0] < n_train and score.shape[1] >= n_train:
         score = score.T
     if score.shape[1] < n_query:
@@ -35,7 +48,11 @@ def main() -> None:
 
     rows = []
     for seller in sellers:
-        indices = parse_indices(seller["train_indices"])
+        global_idx = parse_indices(seller["train_indices"])
+        if global_to_local:
+            indices = [global_to_local[i] for i in global_idx if i in global_to_local]
+        else:
+            indices = global_idx
         seller_scores = args.score_sign * score[indices, :n_query].sum(dim=0)
         for query_index, value in enumerate(seller_scores.tolist()):
             rows.append(

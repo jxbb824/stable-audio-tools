@@ -68,6 +68,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--valid_is_generated", action="store_true")
     parser.add_argument("--output_filename", default="score_TRAK.pt")
+    parser.add_argument("--include_indices_file", type=str, default="",
+                        help="Path to file with comma-separated indices to restrict training data to.")
     return parser.parse_args()
 
 
@@ -81,6 +83,12 @@ def main() -> None:
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     train_dataset = TextDataset(args.train_file)
+    if args.include_indices_file:
+        from torch.utils.data import Subset as _Subset
+        with open(args.include_indices_file) as fh:
+            include_indices = sorted(int(x) for x in fh.read().split(',') if x.strip())
+        train_dataset = _Subset(train_dataset, [i for i in include_indices if i < len(train_dataset)])
+        print(f"Restricted training data to {len(train_dataset)} samples via {args.include_indices_file}.")
     eval_dataset = TextDataset(args.valid_file, num_samples=args.num_prompts, is_generated=args.valid_is_generated)
     train_dataloader = DataLoader(train_dataset, collate_fn=default_data_collator, batch_size=args.batch_size, shuffle=False)
     eval_dataloader = DataLoader(eval_dataset, collate_fn=default_data_collator, batch_size=args.batch_size, shuffle=False)

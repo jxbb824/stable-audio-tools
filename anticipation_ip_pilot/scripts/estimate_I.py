@@ -15,6 +15,10 @@ METHODS = {
         "path": "anticipation_ip_pilot/outputs/a_hat_logra.csv",
         "column": "a_hat_logra",
     },
+    "logra_identity": {
+        "path": "anticipation_ip_pilot/outputs/a_hat_logra_identity.csv",
+        "column": "a_hat_logra_identity",
+    },
     "trak_influence": {
         "path": "anticipation_ip_pilot/outputs/a_hat_trak.csv",
         "column": "a_hat_trak",
@@ -25,6 +29,7 @@ METHODS = {
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Estimate I_j, Spearman, multiplicative K, and calibrated SNR.")
     parser.add_argument("--a-star-path", default="anticipation_ip_pilot/outputs/a_star.csv")
+    parser.add_argument("--a-hat-path", default="", help="Override the default a_hat CSV path for the chosen method.")
     parser.add_argument("--seller-manifest", default="anticipation_ip_pilot/outputs/selection/seller_manifest.csv")
     parser.add_argument("--method", choices=sorted(METHODS), required=True)
     parser.add_argument("--output-path", required=True)
@@ -102,7 +107,8 @@ def main() -> None:
     method_cfg = METHODS[args.method]
     a_star = pd.read_csv(resolve_repo_path(args.a_star_path))
     a_star["prompt_id"] = a_star["prompt_id"].astype(str)
-    a_hat = pd.read_csv(resolve_repo_path(method_cfg["path"]))
+    a_hat_path = args.a_hat_path if args.a_hat_path else method_cfg["path"]
+    a_hat = pd.read_csv(resolve_repo_path(a_hat_path))
     a_hat["prompt_id"] = a_hat["prompt_id"].astype(str)
     merged = a_star.merge(a_hat, on=["seller_id", "prompt_id"], how="inner")
     sellers = read_csv_rows(args.seller_manifest)

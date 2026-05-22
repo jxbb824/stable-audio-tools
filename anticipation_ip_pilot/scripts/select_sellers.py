@@ -255,6 +255,12 @@ def main() -> None:
     )
     write_csv(selection_dir / "candidate_pool.csv", ["line_index", "seller_id", "artist", "track_id", "song"], candidate_rows)
     write_csv(selection_dir / "train_manifest.csv", ["line_index", "track_id", "artist", "song", "seller_id"], train_manifest_rows)
+
+    all_seller_indices = sorted({idx for _, indices in selected for idx in indices})
+    seller_indices_path = selection_dir / "seller_indices.txt"
+    with seller_indices_path.open("w") as fh:
+        fh.write(",".join(str(i) for i in all_seller_indices) + "\n")
+    print(f"[select] wrote {seller_indices_path} ({len(all_seller_indices)} seller indices)")
     eligible_n = sum(
         1
         for a, ix in artist_to_indices.items()

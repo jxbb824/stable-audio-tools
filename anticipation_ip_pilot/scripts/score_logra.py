@@ -80,6 +80,8 @@ def parse_args():
                         help='If set, treat valid_file as generated samples: prepend AUTOREGRESS and do not drop last token.')
     parser.add_argument('--output_filename', type=str, default='score_LoGra_4096_gen.pt',
                         help='Output filename to save attribution scores.')
+    parser.add_argument('--include_indices_file', type=str, default='',
+                        help='Path to file with comma-separated indices to restrict training data to.')
     return parser.parse_args()
 
 def find_layers(model, layer_type="Linear", return_type="instance"):
@@ -174,16 +176,21 @@ def main():
     print(f"Using device: {device}")
 
     train_dataset = TextDataset(args.train_file)
-    # eval_dataset = TextDataset(args.valid_file, num_samples=100)
+    if args.include_indices_file:
+        from torch.utils.data import Subset as _Subset
+        with open(args.include_indices_file) as fh:
+            include_indices = sorted(int(x) for x in fh.read().split(',') if x.strip())
+        train_dataset = _Subset(train_dataset, [i for i in include_indices if i < len(train_dataset)])
+        print(f"Restricted training data to {len(train_dataset)} samples via {args.include_indices_file}.")
     eval_dataset = TextDataset(args.valid_file, num_samples=500, is_generated=args.valid_is_generated)
-    
+
     if len(train_dataset) == 0 or len(eval_dataset) == 0:
         print(f"Error: Dataset is empty or failed to load. Exiting.")
         return
-    
+
     print(f"The training dataset length: {len(train_dataset)}.")
     print(f"The eval dataset length: {len(eval_dataset)}.")
-    
+
     train_dataloader = DataLoader(
         train_dataset,
         collate_fn=default_data_collator,
@@ -214,6 +221,13 @@ def main():
     
     task = FakeAttributionTask(model)
     
+    # Remove stale batch_metadata.json so LoGra doesn't load cached counts
+    # from a previous run (LoGra defaults cache_dir to "." which pollutes CWD).
+    stale_meta = os.path.join(args.output_dir, "batch_metadata.json")
+    if os.path.exists(stale_meta):
+        os.remove(stale_meta)
+        print(f"Removed stale metadata: {stale_meta}")
+
     attributor = LoGraAttributor(
         task=task,
         layer_names=layer_names,
@@ -221,6 +235,7 @@ def main():
         device=device,
         proj_dim=args.proj_dim,
         offload="cpu",
+        cache_dir=args.output_dir,
         damping=args.damping,
     )
     

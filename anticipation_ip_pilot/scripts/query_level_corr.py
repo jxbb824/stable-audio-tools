@@ -12,6 +12,7 @@ from common import resolve_repo_path
 METHODS = {
     "logra_influence": ("anticipation_ip_pilot/outputs/a_hat_logra.csv", "a_hat_logra"),
     "trak_influence": ("anticipation_ip_pilot/outputs/a_hat_trak.csv", "a_hat_trak"),
+    "logra_identity": ("anticipation_ip_pilot/outputs/a_hat_logra_identity.csv", "a_hat_logra_identity"),
 }
 
 
@@ -19,11 +20,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Compute across-seller query-level correlation.")
     parser.add_argument("--method", choices=sorted(METHODS), required=True)
     parser.add_argument("--a-star-path", default="anticipation_ip_pilot/outputs/a_star.csv")
+    parser.add_argument("--a-hat-path", default="", help="Override the default a_hat CSV path for the chosen method.")
     parser.add_argument("--output-csv", required=True)
     parser.add_argument("--summary-json", required=True)
     args = parser.parse_args()
 
-    a_path, col = METHODS[args.method]
+    default_a_path, col = METHODS[args.method]
+    a_path = args.a_hat_path if args.a_hat_path else default_a_path
     a_star = pd.read_csv(resolve_repo_path(args.a_star_path))
     a_hat = pd.read_csv(resolve_repo_path(a_path))
     merged = a_star.merge(a_hat, on=["seller_id", "prompt_id"], how="inner")
