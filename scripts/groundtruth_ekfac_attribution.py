@@ -19,7 +19,7 @@ from torch.utils.data import DataLoader, Dataset, Subset
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_DIFFUSION_INFLUENCE_ROOT = Path("/ocean/projects/mth240006p/xjiang6/diffusion-influence")
+DEFAULT_DIFFUSION_INFLUENCE_ROOT = REPO_ROOT.parent / "diffusion-influence"
 DIFFUSION_INFLUENCE_ROOT = Path(
     os.environ.get("DIFFUSION_INFLUENCE_ROOT", str(DEFAULT_DIFFUSION_INFLUENCE_ROOT))
 ).resolve()

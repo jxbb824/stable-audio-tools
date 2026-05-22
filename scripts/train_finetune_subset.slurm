@@ -21,7 +21,7 @@ MODEL_CKPT="${MODEL_CKPT:-dataset/pretrained_model/model.ckpt}"
 VAE_CKPT="${VAE_CKPT:-dataset/pretrained_model/vae_model.ckpt}"
 OUTPUT_DIR="${OUTPUT_DIR:-outputs/groundtruth_models}"
 RUN_NAME="${RUN_NAME:-stable_audio_groundtruth_subset}"
-LOGGER="${LOGGER:-wandb}"
+LOGGER="${LOGGER:-none}"
 BASE_SEED="${BASE_SEED:-0}"
 CANDIDATE_POOL_SIZE="${CANDIDATE_POOL_SIZE:-1000}"
 TRAIN_SUBSET_SIZE="${TRAIN_SUBSET_SIZE:-500}"
@@ -32,7 +32,6 @@ SEED="$((BASE_SEED + RUN_ID))"
 
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate sat-jamendo
-export WANDB_API_KEY=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
 mkdir -p "$OUTPUT_DIR"
 
 python3 finetune_subset.py \

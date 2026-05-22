@@ -320,6 +320,7 @@ def main() -> None:
         "train_count": int(score_matrix.shape[0]),
         "query_count": int(score_matrix.shape[1]),
         "model_ids": list(model_ids),
+        "primary": dtrak_summary,
         "dtrak": dtrak_summary,
         "random": random_summary,
     }
