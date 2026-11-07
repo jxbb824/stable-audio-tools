@@ -1,0 +1,21 @@
+{
+  "repo": "xirui824/credit-worth-models",
+  "file": "sao_ip_100/outputs/models/0/model.ckpt",
+  "bytes": 4854060002,
+  "started_utc": "2026-11-07T08:51:47.464595+00:00",
+  "phase": "complete",
+  "elapsed_seconds": 80.22364274226129,
+  "checkpoint_started_utc": "2026-11-07T08:51:48.070102+00:00",
+  "sha256": "c816ff86bfadc42f496fd2670ea3d1f32f741566ea0719b529f590fd1a9db43e",
+  "hash_seconds": 29.05338203161955,
+  "commit": "10b0a24e7d9bb757758d2d34007aa20fddfaa454",
+  "upload_seconds": 49.82595922332257,
+  "verified": true,
+  "remote_size": 4854060002,
+  "remote_sha256": "c816ff86bfadc42f496fd2670ea3d1f32f741566ea0719b529f590fd1a9db43e",
+  "checkpoint_total_seconds": 79.61806753929704,
+  "upload_effective_mib_per_second": 92.90724004838496,
+  "end_to_end_mib_per_second": 58.14248571051342,
+  "estimated_full_public_hours": 1.9480920263891062,
+  "repository_url": "https://huggingface.co/xirui824/credit-worth-models"
+}

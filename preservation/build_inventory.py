@@ -176,7 +176,7 @@ def main() -> None:
         item["files"] += 1
         item["bytes"] += row["bytes"]
     summary = {
-        "status": "local inventory only; no remote repositories created or files uploaded",
+        "status": "File allocation inventory; see PRESERVATION.md and transfer_probe.json for publication status",
         "base_commit": "0bc4c4fa51925aae2c99788a2738b71d746aaf13",
         "github_branch": "archive/credit-worth-20261107",
         "planned_hf_public_model_repo": "xirui824/credit-worth-models",

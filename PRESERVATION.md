@@ -6,21 +6,23 @@ ICLR 2027 manuscript `23375_What_s_a_Credit_Worth_A_.pdf` as the scope reference
 It is separate from the NameDrop/SA3 Shapley experiments in the neighboring
 `name-free-attribution` repository.
 
-**Status, November 7, 2026:** the preservation branch and inventories are local.
-No Hugging Face repositories have been created and no files have been uploaded
-by this preservation work. The original files remain in place. Remote names
-below are planned locations, not claims that backups already exist.
+**Status, November 7, 2026:** the preservation branch is published on GitHub.
+The public HF model repository is created, and the 4.52 GiB SAO-50 full-model
+checkpoint has been uploaded and verified by size and SHA-256. Upload of the
+remaining public-model inventory is in progress with resume support. The private
+HF dataset repository has not been created or uploaded. The original files
+remain in place; this is not yet a complete remote backup.
 
 ## Where to find things
 
 | Location | Contents | Visibility |
 | --- | --- | --- |
-| Existing [GitHub repository](https://github.com/jxbb824/stable-audio-tools), branch `archive/credit-worth-20261107` | Source, experiment configs, scoring/analysis code, lightweight numerical results and figures, this guide | GitHub repository's existing visibility; branch not pushed yet |
-| Planned HF **model** repository `xirui824/credit-worth-models` | Trained full and LOCO weights, the five symbolic training-stage checkpoints, three audio replicate weights, model architecture configs | Public |
+| [GitHub archive branch](https://github.com/jxbb824/stable-audio-tools/tree/archive/credit-worth-20261107) | Source, experiment configs, scoring/analysis code, lightweight numerical results and figures, this guide | Public; pushed |
+| [HF **model** repository `xirui824/credit-worth-models`](https://huggingface.co/xirui824/credit-worth-models) | Trained full and LOCO weights, the five symbolic training-stage checkpoints, three audio replicate weights, model architecture configs | Public; upload in progress |
 | Planned HF **dataset** repository `xirui824/credit-worth-artifacts` | Selected training data, exact generated evaluation examples, selection/axis manifests, raw numerical arrays, fit provenance, submitted manuscript | Private |
 | Upstream Hugging Face / GitHub repositories | Downloadable base weights, tokenizers, encoders, source dependencies | Retrieved again when restoring |
 
-Both planned HF repositories mirror paths **relative to this repository root**.
+Both HF repositories use paths **relative to this repository root**.
 Downloading them into the same checkout will reconstruct the expected layout.
 The manuscript is the one exception: its planned archive path is
 `paper/submitted_manuscript.pdf`.
@@ -32,6 +34,14 @@ byte size, purpose, duplicate alias, and SHA-256 where measured.
 [github_paths.txt](preservation/github_paths.txt) lists the files selected for Git.
 Large HF files are inventoried by size at this stage. A size match is not a
 transfer-integrity check; their hashes must be checked during the eventual upload.
+
+The first real upload measurement is saved in
+[preservation/transfer_probe.json](preservation/transfer_probe.json):
+4,854,060,002 bytes, 29.05 seconds to hash, 49.83 seconds for upload/commit,
+79.62 seconds including remote verification. That corresponds to 92.91 MiB/s
+for upload/commit and 58.14 MiB/s end to end. Linear extrapolation to the public
+inventory gives about 1.95 hours; deduplication, file preparation, and service
+variation can change this. Git transferred a 69.15 MiB pack at about 8.48 MiB/s.
 
 ## Experiments actually used in the final paper
 
@@ -207,7 +217,8 @@ reproduced. No new training, GPU scoring, or new held-out experiment was run.
 
 ## Restore the repository and data
 
-Once the branch and HF repositories have actually been published:
+After the required HF uploads have completed (the private repository is still
+pending):
 
 ```bash
 git clone --branch archive/credit-worth-20261107 --recurse-submodules \
