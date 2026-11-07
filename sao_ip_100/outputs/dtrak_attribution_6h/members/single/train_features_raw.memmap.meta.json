@@ -1,0 +1,32 @@
+{
+  "feature_path": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/dtrak_attribution_6h/members/single/train_features_raw.memmap",
+  "ids_path": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/dtrak_attribution_6h/members/single/train_features_raw.memmap.ids.txt",
+  "num_rows_allocated": 1120,
+  "valid_rows": 1117,
+  "proj_dim": 2048,
+  "used_dim": 2048,
+  "K": 10,
+  "t_strategy": "uniform",
+  "num_train_steps": 1000,
+  "f": "loss",
+  "cfg_dropout_prob": 0.0,
+  "model_id": 0,
+  "param_regex": null,
+  "grad_dim": 1056828544,
+  "pre_encoded": false,
+  "projection_mode": "full",
+  "projection_chunk_numel": null,
+  "projection_kernel_batch_size": null,
+  "projection_chunk_sizes": [],
+  "projection_chunk_seeds": [],
+  "peak_cuda_memory_gib": 72.18936204910278,
+  "shard": {
+    "num_shards": 1,
+    "shard_index": 0,
+    "global_num_examples": 1120,
+    "global_start_index": 0,
+    "global_end_index": 1120,
+    "shard_num_examples": 1120,
+    "batch_size": 2
+  }
+}

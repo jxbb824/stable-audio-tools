@@ -1,0 +1,8 @@
+{
+  "method": "random_influence",
+  "num_queries": 500,
+  "mean_pearson": 0.005342468899275785,
+  "median_pearson": 0.0028018084542350027,
+  "mean_spearman": 0.0007571803549420508,
+  "median_spearman": 0.010573057305730573
+}

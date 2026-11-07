@@ -1,5 +1,10 @@
 # Stable Audio Open EKFAC LDS
 
+For the final **What's a Credit Worth?** experiments, retained results, model/data
+locations, and recovery instructions, start with [PRESERVATION.md](PRESERVATION.md).
+The instructions below describe the older LDS workflow, not the final-paper
+50-catalog audio experiment.
+
 Use only these entry points for this workflow:
 
 - `download_mtg_jamendo.py`

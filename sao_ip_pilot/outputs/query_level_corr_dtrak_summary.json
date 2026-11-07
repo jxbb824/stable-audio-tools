@@ -1,0 +1,20 @@
+{
+  "definition": "For each query t, correlation across sellers j between a_hat_dtrak[j,t] and a_star[j,t]; then summarize over queries.",
+  "num_queries_total": 200,
+  "num_queries_valid": 200,
+  "seller_count_min": 22,
+  "seller_count_max": 22,
+  "mean_spearman": 0.05443252399774139,
+  "median_spearman": 0.05533596837944665,
+  "spearman_bootstrap_mean_ci95": [
+    0.02314412761151892,
+    0.0857094861660079
+  ],
+  "min_spearman": -0.7210615471485038,
+  "max_spearman": 0.821569734613213,
+  "positive_spearman_count": 121,
+  "negative_spearman_count": 79,
+  "mean_pearson": 0.17657448266526082,
+  "median_pearson": 0.18228726043234142,
+  "fisher_combined_spearman_pvalue": 0.054713209504250335
+}

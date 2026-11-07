@@ -1,0 +1,20 @@
+{
+  "D-TRAK": {
+    "url": "https://github.com/sail-sg/D-TRAK.git",
+    "commit": "e2a0c2e6de48689f4a868af259959402ed85a0cb"
+  },
+  "third_party/loraw": {
+    "url": "https://github.com/NeuralNotW0rk/LoRAW.git",
+    "commit": "8c01655cd6283d180027cbe4b38bc473e1c89c84"
+  },
+  "diffusion-influence": {
+    "url": "https://github.com/BrunoKM/diffusion-influence.git",
+    "commit": "7f9db8a35d7d3321cda93849333b87a8ca77a9c3",
+    "patch": "diffusion-influence.patch",
+    "install_path": "../diffusion-influence"
+  },
+  "curvlinops-for-pytorch": {
+    "url": "https://github.com/f-dangel/curvlinops.git",
+    "commit": "479a09e468a67eb60db448b643f28269371e798b"
+  }
+}

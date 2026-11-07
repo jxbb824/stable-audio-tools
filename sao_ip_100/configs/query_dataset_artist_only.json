@@ -1,0 +1,12 @@
+{
+  "dataset_type": "audio_dir",
+  "datasets": [
+    {
+      "id": "sao_ip_100_generated_queries_artist_only",
+      "path": "sao_ip_100/outputs/generated_queries_artist_only",
+      "custom_metadata_module": "stable_audio_tools/configs/dataset_configs/custom_metadata/custom_md_generated_from_manifest.py"
+    }
+  ],
+  "random_crop": false,
+  "drop_last": false
+}

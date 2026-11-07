@@ -19,6 +19,18 @@ METHODS = {
         "path": "sao_ip_pilot/outputs/a_hat_dtrak.csv",
         "column": "a_hat_dtrak",
     },
+    "random_influence": {
+        "path": "sao_ip_pilot/outputs/baselines/random/a_hat_random.csv",
+        "column": "a_hat_random",
+    },
+    "clap_similarity": {
+        "path": "sao_ip_pilot/outputs/baselines/clap/a_hat_clap.csv",
+        "column": "a_hat_clap",
+    },
+    "fingerprint_similarity": {
+        "path": "sao_ip_pilot/outputs/baselines/fingerprint/a_hat_fingerprint.csv",
+        "column": "a_hat_fingerprint",
+    },
 }
 
 
@@ -27,6 +39,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--a-star-path", default="sao_ip_pilot/outputs/a_star.csv")
     parser.add_argument("--seller-manifest", default="sao_ip_pilot/outputs/selection/seller_manifest.csv")
     parser.add_argument("--method", action="append", choices=sorted(METHODS), default=None)
+    parser.add_argument("--a-hat-path", default="", help="Override default a_hat CSV for the chosen method.")
     parser.add_argument("--output-path", default="sao_ip_pilot/outputs/I_hat.csv")
     parser.add_argument("--bootstrap-samples", type=int, default=1000)
     parser.add_argument("--ci", type=float, default=0.95)
@@ -117,7 +130,8 @@ def main() -> None:
     rows = []
     for method in methods:
         method_cfg = METHODS[method]
-        a_hat = pd.read_csv(resolve_repo_path(method_cfg["path"]))
+        a_hat_path = args.a_hat_path if args.a_hat_path else method_cfg["path"]
+        a_hat = pd.read_csv(resolve_repo_path(a_hat_path))
         a_hat["prompt_id"] = a_hat["prompt_id"].astype(str)
         col = method_cfg["column"]
         merged = a_star.merge(a_hat, on=["seller_id", "prompt_id"], how="inner")

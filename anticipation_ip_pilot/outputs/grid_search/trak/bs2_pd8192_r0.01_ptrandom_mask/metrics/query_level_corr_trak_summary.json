@@ -1,0 +1,8 @@
+{
+  "method": "trak_influence",
+  "num_queries": 500,
+  "mean_pearson": 0.08709787836929173,
+  "median_pearson": 0.06201021658897227,
+  "mean_spearman": 0.03480422503658383,
+  "median_spearman": 0.027098709870987097
+}

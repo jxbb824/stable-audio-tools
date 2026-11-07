@@ -1,0 +1,8 @@
+{
+  "method": "logra_identity",
+  "num_queries": 500,
+  "mean_pearson": 0.061747213702496966,
+  "median_pearson": 0.025274823961480005,
+  "mean_spearman": 0.004851832325010816,
+  "median_spearman": 0.002424242424242424
+}

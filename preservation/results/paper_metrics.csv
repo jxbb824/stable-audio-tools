@@ -1,0 +1,16 @@
+experiment,method,catalogs,queries,defined_correlation_queries,mean_spearman,mean_pearson,median_calibrated_snr,welfare_gap_closed_percent,negative_calibration_slopes,matches_paper_rounding,a_star_path,a_hat_path
+sao50,EKFAC,50,200,200,0.007323390997034131,0.10896887099371058,0.023187197307443747,9.358283949080835,19,True,sao_ip_100/outputs/a_star.csv,sao_ip_100/outputs/a_hat_ekfac_v100_layer_sharded.csv
+sao50,D-TRAK,50,200,200,0.0313774744794733,0.12461690825257696,0.00913708162163214,9.182839464578535,16,True,sao_ip_100/outputs/a_star.csv,sao_ip_100/outputs/a_hat_dtrak_v100_chunked.csv
+sao50,Random,50,200,200,0.010905884353333156,0.05259442343963618,0.0026741644592822296,0.5260723167821167,23,True,sao_ip_100/outputs/a_star.csv,sao_ip_100/outputs/baselines/random/a_hat_random.csv
+sao50,CLAP,50,200,200,0.045724141533151436,0.14783955564478066,0.01619554333606687,4.961102353181746,8,True,sao_ip_100/outputs/a_star.csv,sao_ip_100/outputs/baselines/clap/a_hat_clap.csv
+sao50,Fingerprint,50,200,200,0.02932091547685829,0.15011381048430356,0.006446386323782043,5.800796147895074,12,True,sao_ip_100/outputs/a_star.csv,sao_ip_100/outputs/baselines/fingerprint/a_hat_fingerprint.csv
+sao22,EKFAC,22,200,200,0.05009034443817053,0.18827648392575264,0.09206444136114085,10.587504285423888,6,True,sao_ip_pilot/outputs/a_star.csv,sao_ip_pilot/outputs/a_hat_ekfac.csv
+sao22,D-TRAK,22,200,200,0.05443252399774139,0.17657448266526085,0.02117537606894617,9.774613225417411,3,True,sao_ip_pilot/outputs/a_star.csv,sao_ip_pilot/outputs/a_hat_dtrak.csv
+sao22,Random,22,200,200,0.052947487295313386,0.09174798534271175,0.002062516383552538,0.2657549619279532,12,True,sao_ip_pilot/outputs/a_star.csv,sao_ip_pilot/outputs/baselines/random/a_hat_random.csv
+sao22,CLAP,22,200,200,0.12722190852625637,0.2886788648019875,0.13324889623553737,16.578587619618435,0,True,sao_ip_pilot/outputs/a_star.csv,sao_ip_pilot/outputs/baselines/clap/a_hat_clap.csv
+sao22,Fingerprint,22,200,199,0.11377046720308258,0.2896602931997541,0.034747644397190136,10.942003262362523,2,True,sao_ip_pilot/outputs/a_star.csv,sao_ip_pilot/outputs/baselines/fingerprint/a_hat_fingerprint.csv
+amt100,LoGra,100,500,500,0.06758448231087674,0.19369858555651057,0.016592165703221327,6.478796718153051,24,True,anticipation_ip_pilot/outputs/selected/a_star.csv,anticipation_ip_pilot/outputs/selected/a_hat_logra.csv
+amt100,TRAK,100,500,500,0.03480422503658383,0.08709787836929173,0.0019043989883074214,1.3774129924361422,33,True,anticipation_ip_pilot/outputs/selected/a_star.csv,anticipation_ip_pilot/outputs/selected/a_hat_trak.csv
+amt100,Random,100,500,500,0.0007571803549420508,0.0053424688992757844,0.0008083913989817878,0.14533566627893899,48,True,anticipation_ip_pilot/outputs/selected/a_star.csv,anticipation_ip_pilot/outputs/baselines/random/a_hat_random.csv
+amt100,CLAP,100,500,500,0.0038341204569468873,0.006770199257095438,0.012284012694092017,1.4208453104803187,93,True,anticipation_ip_pilot/outputs/selected/a_star.csv,anticipation_ip_pilot/outputs/baselines/clap/a_hat_clap.csv
+amt100,Fingerprint,100,500,500,0.012452420521346272,0.1087616699170047,0.00558596783548993,9.091486706722803,22,True,anticipation_ip_pilot/outputs/selected/a_star.csv,anticipation_ip_pilot/outputs/baselines/fingerprint/a_hat_fingerprint.csv

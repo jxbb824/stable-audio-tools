@@ -1,0 +1,13 @@
+{
+  "output_score_path": "/ocean/projects/mth240006p/xjiang6/stable-audio-tools/sao_ip_pilot/outputs/dtrak_attribution/scores_query_x_train.memmap",
+  "shape": [
+    200,
+    474
+  ],
+  "layout": "query_x_train",
+  "train_axis_order": "candidate_pool_pool_index",
+  "query_axis_manifest": "/ocean/projects/mth240006p/xjiang6/stable-audio-tools/sao_ip_pilot/outputs/dtrak_attribution/query_axis_manifest.csv",
+  "train_axis_manifest": "/ocean/projects/mth240006p/xjiang6/stable-audio-tools/sao_ip_pilot/outputs/dtrak_attribution/train_axis_manifest.csv",
+  "source_raw_score_path": "member-specific",
+  "source_raw_score_meta_path": "member-specific"
+}

@@ -1,0 +1,12 @@
+{
+  "output_score_path": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/ekfac_layer_shard_v100_probe/46002699/shard_176_177/scores_query_x_train.memmap",
+  "shape": [
+    2,
+    2
+  ],
+  "layout": "query_x_train",
+  "train_axis_order": "candidate_pool_pool_index",
+  "query_axis_manifest": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/ekfac_layer_shard_v100_probe/46002699/shard_176_177/query_axis_manifest.csv",
+  "train_axis_manifest": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/ekfac_layer_shard_v100_probe/46002699/shard_176_177/train_axis_manifest.csv",
+  "method": "ekfac_influence"
+}

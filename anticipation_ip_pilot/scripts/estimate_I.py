@@ -23,6 +23,18 @@ METHODS = {
         "path": "anticipation_ip_pilot/outputs/a_hat_trak.csv",
         "column": "a_hat_trak",
     },
+    "random_influence": {
+        "path": "anticipation_ip_pilot/outputs/baselines/random/a_hat_random.csv",
+        "column": "a_hat_random",
+    },
+    "clap_similarity": {
+        "path": "anticipation_ip_pilot/outputs/baselines/clap/a_hat_clap.csv",
+        "column": "a_hat_clap",
+    },
+    "fingerprint_similarity": {
+        "path": "anticipation_ip_pilot/outputs/baselines/fingerprint/a_hat_fingerprint.csv",
+        "column": "a_hat_fingerprint",
+    },
 }
 
 

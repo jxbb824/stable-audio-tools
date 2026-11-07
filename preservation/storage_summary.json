@@ -1,0 +1,41 @@
+{
+  "status": "local inventory only; no remote repositories created or files uploaded",
+  "base_commit": "0bc4c4fa51925aae2c99788a2738b71d746aaf13",
+  "github_branch": "archive/credit-worth-20261107",
+  "planned_hf_public_model_repo": "xirui824/credit-worth-models",
+  "planned_hf_private_dataset_repo": "xirui824/credit-worth-artifacts",
+  "selected_audio_files": 1137,
+  "selected_audio_bytes": 10303653096,
+  "totals": {
+    "alias": {
+      "files": 2,
+      "bytes": 1024861440
+    },
+    "excluded": {
+      "files": 7439,
+      "bytes": 269401178245
+    },
+    "github": {
+      "files": 1138,
+      "bytes": 172981154
+    },
+    "hf_private": {
+      "files": 2901,
+      "bytes": 11438517656
+    },
+    "hf_public": {
+      "files": 473,
+      "bytes": 427568278909
+    },
+    "redownload": {
+      "files": 3,
+      "bytes": 5484466518
+    }
+  },
+  "notes": [
+    "Excluded totals cover inventoried paths, not every unrelated file in the checkout.",
+    "GitHub totals exclude this inventory and other preservation/ files themselves.",
+    "HF payloads retain original model/data bytes; this script does not repack or convert them.",
+    "SHA-256 is populated for small GitHub files only; large payload hashing belongs to transfer verification."
+  ]
+}

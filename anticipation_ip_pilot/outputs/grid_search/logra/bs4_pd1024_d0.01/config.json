@@ -1,0 +1,12 @@
+{
+  "tag": "bs4_pd1024_d0.01",
+  "batch_size": 4,
+  "proj_dim": 1024,
+  "damping": 0.01,
+  "seed": 42,
+  "train_file": "anticipation_ip_pilot/data/finetune/train_v2.txt",
+  "queries_file": "anticipation_ip_pilot/outputs/queries/generated_samples_prompted_500.txt",
+  "model_path": "anticipation_ip_pilot/outputs/models/full-selected/full_model",
+  "include_indices_file": "anticipation_ip_pilot/outputs/selection/seller_indices.txt",
+  "a_star_path": "anticipation_ip_pilot/outputs/selected/a_star.csv"
+}

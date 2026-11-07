@@ -1,0 +1,64 @@
+{
+  "method": "ekfac_influence",
+  "diffusion_influence_root": "/ocean/projects/mth240006p/xjiang6/diffusion-influence",
+  "model_config": "/ocean/projects/mth240006p/xjiang6/stable-audio-tools/model_config_freeze_vae.json",
+  "train_dataset_config": "/ocean/projects/mth240006p/xjiang6/stable-audio-tools/sao_ip_pilot/configs/train_dataset.json",
+  "query_dataset_config": "/ocean/projects/mth240006p/xjiang6/stable-audio-tools/sao_ip_pilot/configs/query_dataset.json",
+  "resolved_train_dataset_config": "/ocean/projects/mth240006p/xjiang6/stable-audio-tools/sao_ip_pilot/outputs/ekfac_attribution/resolved_train_dataset_config.json",
+  "resolved_query_dataset_config": "/ocean/projects/mth240006p/xjiang6/stable-audio-tools/sao_ip_pilot/outputs/ekfac_attribution/resolved_query_dataset_config.json",
+  "models_root": "/ocean/projects/mth240006p/xjiang6/stable-audio-tools/sao_ip_pilot/outputs/models",
+  "full_model_dir": "/ocean/projects/mth240006p/xjiang6/stable-audio-tools/sao_ip_pilot/outputs/models/0",
+  "output_dir": "/ocean/projects/mth240006p/xjiang6/stable-audio-tools/sao_ip_pilot/outputs/ekfac_attribution",
+  "train_count": 474,
+  "query_count": 200,
+  "device": "cuda:0",
+  "seed": 42,
+  "measurement_f": "loss",
+  "measurement_cfg_dropout_prob": 0.0,
+  "loss_cfg_dropout_prob": 0.1,
+  "kfac_num_samples_for_loss": 16,
+  "kfac_batch_size": 2,
+  "num_samples_for_loss_scoring": 8,
+  "num_samples_for_measurement_scoring": 8,
+  "num_loss_batch_aggregations": 1,
+  "num_measurement_batch_aggregations": 1,
+  "query_batch_size": 4,
+  "train_batch_size": 4,
+  "query_gradient_compression": {
+    "type": "quantization",
+    "bits": 4
+  },
+  "kfac": {
+    "correct_eigenvalues": true,
+    "kfac_approx": "expand",
+    "fisher_type": "mc",
+    "mc_samples": 1,
+    "damping": 1e-08,
+    "use_exact_damping": true,
+    "use_heuristic_damping": false
+  },
+  "parameter_selection": {
+    "type": "diffusion.model nn.Linear parameters",
+    "linear_layer_start_fraction": 0.5
+  },
+  "train_axis_manifest": "/ocean/projects/mth240006p/xjiang6/stable-audio-tools/sao_ip_pilot/outputs/ekfac_attribution/train_axis_manifest.csv",
+  "query_axis_manifest": "/ocean/projects/mth240006p/xjiang6/stable-audio-tools/sao_ip_pilot/outputs/ekfac_attribution/query_axis_manifest.csv",
+  "scores_query_x_train_memmap": "/ocean/projects/mth240006p/xjiang6/stable-audio-tools/sao_ip_pilot/outputs/ekfac_attribution/scores_query_x_train.memmap",
+  "scores_train_x_query_pt": "/ocean/projects/mth240006p/xjiang6/stable-audio-tools/sao_ip_pilot/outputs/ekfac_attribution/scores_train_x_query.pt",
+  "members": [
+    {
+      "member_position": 0,
+      "model_index": null,
+      "model_dir": "/ocean/projects/mth240006p/xjiang6/stable-audio-tools/sao_ip_pilot/outputs/models/0",
+      "checkpoint_path": "/ocean/projects/mth240006p/xjiang6/stable-audio-tools/sao_ip_pilot/outputs/models/0/model.ckpt",
+      "output_dir": "/ocean/projects/mth240006p/xjiang6/stable-audio-tools/sao_ip_pilot/outputs/ekfac_attribution/members/single",
+      "num_linear_modules": 89,
+      "num_parameters": 533961216,
+      "loss_cfg_dropout_prob": 0.1,
+      "pre_encoded": true,
+      "cached_latents": true,
+      "kfac_approx": "expand",
+      "linear_layer_start_fraction": 0.5
+    }
+  ]
+}

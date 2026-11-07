@@ -1,0 +1,24 @@
+{
+  "definition": "For each query t, Spearman across sellers j between a_hat_ekfac[j,t] and a_star[j,t]; then summarize over queries.",
+  "output_csv": "sao_ip_pilot/outputs/query_level_spearman.csv",
+  "num_queries_total": 200,
+  "num_queries_valid": 200,
+  "seller_count_min": 22,
+  "seller_count_max": 22,
+  "mean_spearman": 0.05009034443817053,
+  "median_spearman": 0.06493506493506494,
+  "std_spearman": 0.2132546237318321,
+  "spearman_bootstrap_mean_ci95": [
+    0.019942405420666293,
+    0.07933949745906269
+  ],
+  "min_spearman": -0.4274421230942971,
+  "max_spearman": 0.5889328063241107,
+  "positive_spearman_count": 118,
+  "negative_spearman_count": 82,
+  "zero_spearman_count": 0,
+  "mean_pearson": 0.18827648392575258,
+  "median_pearson": 0.29934039816955615,
+  "fisher_combined_spearman_pvalue": 0.44043914931307226,
+  "mean_spearman_if_negate_ekfac": -0.05009034443817053
+}

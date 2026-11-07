@@ -1,0 +1,24 @@
+{
+  "status": "pass",
+  "coverage_exact": true,
+  "num_chunks": 5,
+  "chunk_sizes": [
+    11,
+    11,
+    11,
+    11,
+    11
+  ],
+  "chunk_seeds": [
+    191664963,
+    1662057957,
+    1405681631,
+    942484272,
+    929893137
+  ],
+  "determinism_max_abs": 0.0,
+  "linearity_relative_l2": 0.00027925805895327423,
+  "legacy_linearity_relative_l2": 0.0002725465478378334,
+  "jl_cosine_mae": 0.035234712064266205,
+  "jl_cosine_max_error": 0.1335669755935669
+}

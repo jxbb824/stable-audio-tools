@@ -13,6 +13,12 @@ METHODS = {
     "logra_influence": ("anticipation_ip_pilot/outputs/a_hat_logra.csv", "a_hat_logra"),
     "trak_influence": ("anticipation_ip_pilot/outputs/a_hat_trak.csv", "a_hat_trak"),
     "logra_identity": ("anticipation_ip_pilot/outputs/a_hat_logra_identity.csv", "a_hat_logra_identity"),
+    "random_influence": ("anticipation_ip_pilot/outputs/baselines/random/a_hat_random.csv", "a_hat_random"),
+    "clap_similarity": ("anticipation_ip_pilot/outputs/baselines/clap/a_hat_clap.csv", "a_hat_clap"),
+    "fingerprint_similarity": (
+        "anticipation_ip_pilot/outputs/baselines/fingerprint/a_hat_fingerprint.csv",
+        "a_hat_fingerprint",
+    ),
 }
 
 

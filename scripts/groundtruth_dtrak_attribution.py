@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Sequence, Tuple
@@ -75,6 +76,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--cfg-dropout-prob", type=float, default=0.0)
     parser.add_argument("--lambda-reg", type=float, default=1e2)
     parser.add_argument("--param-regex", type=str, default="")
+    parser.add_argument(
+        "--projection-mode",
+        choices=["full", "chunked"],
+        default="full",
+    )
+    parser.add_argument("--projection-chunk-numel", type=int, default=64 * 1024 * 1024)
+    parser.add_argument(
+        "--projection-kernel-batch-size",
+        type=int,
+        choices=[8, 16, 32],
+        default=8,
+    )
+    parser.add_argument("--num-shards", type=int, default=1)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--e-seed", type=int, default=0)
     parser.add_argument("--autocast-pretransform", action="store_true")
@@ -152,6 +166,50 @@ def infer_train_count(candidate_pool_rows: List[Dict[str, str]], explicit_train_
     if explicit_train_count is not None:
         return explicit_train_count
     return len(candidate_pool_rows)
+
+
+def resolve_candidate_pool_paths(
+    candidate_pool_rows: Sequence[Dict[str, str]],
+    train_dataset_config: Dict[str, Any],
+) -> List[Dict[str, str]]:
+    """Resolve copied candidate manifests against the active dataset roots.
+
+    Experiment directories are sometimes moved between project allocations.  The
+    candidate manifest keeps a stable ``relpath``, so prefer that over an absolute
+    path recorded by the original training run.
+    """
+    dataset_roots: List[Path] = []
+    for dataset_entry in train_dataset_config.get("datasets", []):
+        dataset_path = Path(dataset_entry["path"])
+        dataset_roots.append(
+            dataset_path.resolve()
+            if dataset_path.is_absolute()
+            else (REPO_ROOT / dataset_path).resolve()
+        )
+    if not dataset_roots:
+        raise ValueError("Train dataset config must include at least one dataset path.")
+
+    resolved_rows: List[Dict[str, str]] = []
+    for row in candidate_pool_rows:
+        relpath = row.get("relpath", "")
+        candidates = [root / relpath for root in dataset_roots] if relpath else []
+        original_path = Path(row.get("path", ""))
+        candidates.append(original_path)
+        resolved_path = next((path.resolve() for path in candidates if path.is_file()), None)
+        if resolved_path is None:
+            raise FileNotFoundError(
+                f"Could not resolve candidate track {row.get('track_id', '<unknown>')} "
+                f"with relpath={relpath!r} under dataset roots {dataset_roots}."
+            )
+        resolved_row = dict(row)
+        resolved_row["path"] = str(resolved_path)
+        if relpath:
+            for root in dataset_roots:
+                if (root / relpath).resolve() == resolved_path:
+                    resolved_row["dataset_root"] = str(root)
+                    break
+        resolved_rows.append(resolved_row)
+    return resolved_rows
 
 
 def parse_ensemble_model_indices(value: str) -> List[int]:
@@ -291,6 +349,93 @@ def run_command(command: List[str]) -> None:
     subprocess.run(command, check=True, cwd=str(REPO_ROOT))
 
 
+def run_feature_extraction(
+    common_args: List[str],
+    dataset_config_path: Path,
+    feature_path: Path,
+    max_examples: int,
+    num_shards: int,
+) -> None:
+    if num_shards == 1:
+        run_command(
+            common_args
+            + [
+                "--dataset-config",
+                str(dataset_config_path),
+                "--feature-path",
+                str(feature_path),
+                "--max-examples",
+                str(max_examples),
+            ]
+        )
+        return
+
+    visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES", "").split(",")
+    visible_devices = [device.strip() for device in visible_devices if device.strip()]
+    if len(visible_devices) < num_shards:
+        # Slurm normally populates CUDA_VISIBLE_DEVICES. The fallback is useful for
+        # explicitly launched local multi-GPU jobs where all devices are visible.
+        visible_devices = [str(index) for index in range(torch.cuda.device_count())]
+    if len(visible_devices) < num_shards:
+        raise RuntimeError(
+            f"Requested {num_shards} shards but only {len(visible_devices)} CUDA devices are visible."
+        )
+
+    shard_feature_paths = [
+        feature_path.with_name(f"{feature_path.name}.shard{shard_index}")
+        for shard_index in range(num_shards)
+    ]
+    processes = []
+    for shard_index, shard_feature_path in enumerate(shard_feature_paths):
+        command = common_args + [
+            "--dataset-config",
+            str(dataset_config_path),
+            "--feature-path",
+            str(shard_feature_path),
+            "--max-examples",
+            str(max_examples),
+            "--num-shards",
+            str(num_shards),
+            "--shard-index",
+            str(shard_index),
+        ]
+        env = os.environ.copy()
+        env["CUDA_VISIBLE_DEVICES"] = visible_devices[shard_index]
+        print(
+            f"[shard {shard_index}/{num_shards}] CUDA_VISIBLE_DEVICES="
+            f"{visible_devices[shard_index]} + {' '.join(command)}",
+            flush=True,
+        )
+        processes.append(subprocess.Popen(command, cwd=str(REPO_ROOT), env=env))
+
+    while True:
+        return_codes = [process.poll() for process in processes]
+        failed = [code for code in return_codes if code not in (None, 0)]
+        if failed:
+            for process in processes:
+                if process.poll() is None:
+                    process.terminate()
+            for process in processes:
+                process.wait()
+            raise RuntimeError(f"One or more D-TRAK feature shards failed: {return_codes}")
+        if all(code == 0 for code in return_codes):
+            break
+        time.sleep(1.0)
+
+    run_command(
+        [
+            sys.executable,
+            "scripts/merge_dtrak_feature_shards.py",
+            "--feature-paths",
+            *[str(path) for path in shard_feature_paths],
+            "--meta-paths",
+            *[str(path) + ".meta.json" for path in shard_feature_paths],
+            "--output-feature-path",
+            str(feature_path),
+        ]
+    )
+
+
 def run_member_pipeline(
     member_output_dir: Path,
     common_args: List[str],
@@ -301,6 +446,7 @@ def run_member_pipeline(
     used_dim: int,
     lambda_reg: float,
     device: str,
+    num_shards: int,
 ) -> Tuple[Path, dict, dict, dict]:
     member_output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -308,27 +454,19 @@ def run_member_pipeline(
     query_feature_path = member_output_dir / "query_features.memmap"
     raw_score_path = member_output_dir / "scores_query_x_train_raw.memmap"
 
-    run_command(
-        common_args
-        + [
-            "--dataset-config",
-            str(resolved_train_dataset_config_path),
-            "--feature-path",
-            str(train_feature_path),
-            "--max-examples",
-            str(train_count),
-        ]
+    run_feature_extraction(
+        common_args=common_args,
+        dataset_config_path=resolved_train_dataset_config_path,
+        feature_path=train_feature_path,
+        max_examples=train_count,
+        num_shards=num_shards,
     )
-    run_command(
-        common_args
-        + [
-            "--dataset-config",
-            str(resolved_query_dataset_config_path),
-            "--feature-path",
-            str(query_feature_path),
-            "--max-examples",
-            str(query_count),
-        ]
+    run_feature_extraction(
+        common_args=common_args,
+        dataset_config_path=resolved_query_dataset_config_path,
+        feature_path=query_feature_path,
+        max_examples=query_count,
+        num_shards=num_shards,
     )
     run_command(
         [
@@ -373,6 +511,8 @@ def save_query_x_train_memmap(path: Path, values: torch.Tensor) -> None:
 
 def main() -> None:
     args = parse_args()
+    if args.num_shards <= 0:
+        raise ValueError("--num-shards must be positive.")
 
     model_config_path = (REPO_ROOT / args.model_config).resolve()
     train_dataset_config_path = (REPO_ROOT / args.train_dataset_config).resolve()
@@ -382,6 +522,7 @@ def main() -> None:
     ensemble_pairs = discover_model_dirs(models_root, ensemble_model_indices)
     output_dir = (REPO_ROOT / args.output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
+    train_dataset_config = deepcopy(load_json(train_dataset_config_path))
 
     if ensemble_pairs:
         reference_model_index, reference_model_dir = ensemble_pairs[0]
@@ -391,20 +532,19 @@ def main() -> None:
         candidate_pool_rows = read_csv_rows(candidate_pool_path)
         if not candidate_pool_rows:
             raise RuntimeError(f"No candidate pool rows found in {candidate_pool_path}")
-        train_include_paths_file = output_dir / "candidate_pool_paths.txt"
-        write_paths_file(train_include_paths_file, [row["path"] for row in candidate_pool_rows])
     else:
         reference_model_index = None
         reference_model_dir = (REPO_ROOT / args.full_model_dir).resolve()
         candidate_pool_path = reference_model_dir / "candidate_pool.csv"
-        train_include_paths_file = reference_model_dir / "selected_paths.txt"
         if not candidate_pool_path.exists():
             raise FileNotFoundError(f"candidate_pool.csv not found: {candidate_pool_path}")
-        if not train_include_paths_file.exists():
-            raise FileNotFoundError(f"selected_paths.txt not found: {train_include_paths_file}")
         candidate_pool_rows = read_csv_rows(candidate_pool_path)
         if not candidate_pool_rows:
             raise RuntimeError(f"No candidate pool rows found in {candidate_pool_path}")
+
+    candidate_pool_rows = resolve_candidate_pool_paths(candidate_pool_rows, train_dataset_config)
+    train_include_paths_file = output_dir / "candidate_pool_paths.txt"
+    write_paths_file(train_include_paths_file, [row["path"] for row in candidate_pool_rows])
 
     if ensemble_pairs:
         member_pairs = ensemble_pairs
@@ -424,7 +564,6 @@ def main() -> None:
             f"train_count={train_count} does not match candidate_pool.csv row count={len(candidate_pool_rows)}."
         )
 
-    train_dataset_config = deepcopy(load_json(train_dataset_config_path))
     train_dataset_config["include_paths_file"] = str(train_include_paths_file)
     train_dataset_config["drop_last"] = False
     train_dataset_config["random_crop"] = False
@@ -502,6 +641,12 @@ def main() -> None:
             "--cfg-dropout-prob",
             str(args.cfg_dropout_prob),
             "--disable-random-crop",
+            "--projection-mode",
+            args.projection_mode,
+            "--projection-chunk-numel",
+            str(args.projection_chunk_numel),
+            "--projection-kernel-batch-size",
+            str(args.projection_kernel_batch_size),
         ]
         if args.param_regex:
             common_args.extend(["--param-regex", args.param_regex])
@@ -520,6 +665,7 @@ def main() -> None:
             used_dim=args.used_dim,
             lambda_reg=args.lambda_reg,
             device=args.device,
+            num_shards=args.num_shards,
         )
 
         raw_train_ids = read_text_lines(Path(train_feature_meta["ids_path"]))

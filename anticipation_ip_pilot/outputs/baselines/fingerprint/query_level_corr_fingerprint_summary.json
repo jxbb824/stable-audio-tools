@@ -1,0 +1,8 @@
+{
+  "method": "fingerprint_similarity",
+  "num_queries": 500,
+  "mean_pearson": 0.10876166991700471,
+  "median_pearson": 0.02823765046930577,
+  "mean_spearman": 0.012452420521346272,
+  "median_spearman": 0.013814710839871961
+}

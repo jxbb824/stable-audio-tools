@@ -1,0 +1,8 @@
+{
+  "method": "clap_similarity",
+  "num_queries": 500,
+  "mean_pearson": 0.00677019925709544,
+  "median_pearson": 0.006193636369951542,
+  "mean_spearman": 0.0038341204569468873,
+  "median_spearman": 0.006108610861086108
+}

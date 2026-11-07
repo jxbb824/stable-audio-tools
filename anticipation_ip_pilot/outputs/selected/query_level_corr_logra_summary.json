@@ -1,0 +1,8 @@
+{
+  "method": "logra_influence",
+  "num_queries": 500,
+  "mean_pearson": 0.19369858555651057,
+  "median_pearson": 0.1138597624132467,
+  "mean_spearman": 0.06758448231087673,
+  "median_spearman": 0.06494449444944494
+}

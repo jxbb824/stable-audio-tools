@@ -1,0 +1,4 @@
+layers_089_119 var 296.158 kurt 2081.5 src-track top10 0.271 median rank 324.0
+layers_119_149 var 198.928 kurt 751.7 src-track top10 0.216 median rank 267.0
+layers_149_178 var 190.913 kurt 2282.6 src-track top10 0.211 median rank 145.0
+sum var 1296.675 src-track top10 0.271 median rank 198.0

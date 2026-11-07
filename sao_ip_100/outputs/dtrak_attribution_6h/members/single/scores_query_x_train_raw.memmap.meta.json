@@ -1,0 +1,14 @@
+{
+  "output_score_path": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/dtrak_attribution_6h/members/single/scores_query_x_train_raw.memmap",
+  "shape": [
+    200,
+    1117
+  ],
+  "lambda_reg": 0.1,
+  "used_dim": 2048,
+  "negate": false,
+  "train_num_examples": 1117,
+  "query_num_examples": 200,
+  "train_ids_path": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/dtrak_attribution_6h/members/single/train_features_raw.memmap.ids.txt",
+  "query_ids_path": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/dtrak_attribution_6h/members/single/query_features.memmap.ids.txt"
+}

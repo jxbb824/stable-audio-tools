@@ -1,0 +1,13 @@
+diff --git a/pyproject.toml b/pyproject.toml
+index 2625764..2de926d 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -24,7 +24,7 @@ dependencies = [
+   "transformers==4.40.0",
+   "torchmetrics",
+ ]
+-requires-python = ">=3.11"
++requires-python = ">=3.10"
+ authors = [
+   {name = "Bruno Mlodozeniec"},
+   {name = "Runa Eschenhagen"},

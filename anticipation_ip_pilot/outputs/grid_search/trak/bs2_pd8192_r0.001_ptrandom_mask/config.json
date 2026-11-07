@@ -1,0 +1,16 @@
+{
+  "tag": "bs2_pd8192_r0.001_ptrandom_mask",
+  "batch_size": 2,
+  "proj_dim": 8192,
+  "regularization": 0.001,
+  "proj_type": "random_mask",
+  "num_checkpoints": 5,
+  "proj_max_batch_size": 40,
+  "num_prompts": 500,
+  "seed": 42,
+  "train_file": "anticipation_ip_pilot/data/finetune/train_v2.txt",
+  "queries_file": "anticipation_ip_pilot/outputs/queries/generated_samples_prompted_500.txt",
+  "checkpoint_dir": "anticipation_ip_pilot/outputs/models/full-selected",
+  "include_indices_file": "anticipation_ip_pilot/outputs/selection/seller_indices.txt",
+  "a_star_path": "anticipation_ip_pilot/outputs/selected/a_star.csv"
+}

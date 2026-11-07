@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "valid_rows": 1,
+  "grad_dim": 1056828544,
+  "projection_mode": "chunked",
+  "num_projection_chunks": 32,
+  "torch_peak_cuda_memory_gib": 15.545417785644531,
+  "nvidia_smi_peak_memory_mib": 16334.0
+}

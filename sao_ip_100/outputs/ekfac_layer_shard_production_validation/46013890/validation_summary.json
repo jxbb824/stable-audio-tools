@@ -1,0 +1,24 @@
+{
+  "status": "fail",
+  "shape": [
+    6,
+    6
+  ],
+  "repeat_run": {
+    "relative_frobenius_error": 0.07538244289009695,
+    "normalized_max_absolute_error": 0.0721298811505154,
+    "spearman": 0.9953667953667954,
+    "sign_agreement": 1.0
+  },
+  "layer_sharded": {
+    "relative_frobenius_error": 0.0795363964457905,
+    "normalized_max_absolute_error": 0.07072788689026518,
+    "spearman": 0.9940797940797942,
+    "sign_agreement": 0.9722222222222222
+  },
+  "thresholds": {
+    "relative_frobenius_error": 0.22614732867029086,
+    "minimum_spearman": 0.999,
+    "minimum_sign_agreement": 0.97
+  }
+}

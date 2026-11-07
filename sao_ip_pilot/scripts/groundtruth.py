@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 import random
 from copy import deepcopy
 from pathlib import Path
@@ -41,9 +42,17 @@ def parse_args() -> argparse.Namespace:
         "--t-strategy",
         type=str,
         default="uniform",
-        choices=["uniform", "cumulative"],
+        choices=["uniform", "cumulative", "midpoint"],
     )
     parser.add_argument("--num-train-steps", type=int, default=1000)
+    parser.add_argument(
+        "--query-order-file",
+        type=str,
+        default=None,
+        help="Optional file listing query audio files (one per line; matched by basename) "
+        "in the order they must be loaded. Batch position determines the noise draw, so a "
+        "fixed order keeps scores comparable across runs. Must cover every query file.",
+    )
     parser.add_argument(
         "--f",
         type=str,
@@ -112,6 +121,9 @@ def select_timesteps(k: int, num_train_steps: int, strategy: str) -> List[int]:
         return list(range(0, num_train_steps, stride))[:k]
     if strategy == "cumulative":
         return list(range(k))
+    if strategy == "midpoint":
+        stride = max(1, num_train_steps // k)
+        return [stride // 2 + i * stride for i in range(k)]
     raise ValueError(f"Unknown t_strategy: {strategy}")
 
 
@@ -218,6 +230,7 @@ def build_query_cache(
     batch_size: int,
     num_workers: int,
     max_examples: Optional[int],
+    query_order_file: Optional[str] = None,
 ) -> Tuple[List[Tuple[torch.Tensor, List[Dict[str, Any]]]], List[str]]:
     loader = create_dataloader_from_config(
         query_dataset_config,
@@ -228,6 +241,19 @@ def build_query_cache(
         audio_channels=int(model_config.get("audio_channels", 2)),
         shuffle=False,
     )
+    if query_order_file is not None:
+        dataset = loader.dataset
+        if not hasattr(dataset, "filenames"):
+            raise RuntimeError("--query-order-file requires a dataset with a `filenames` list.")
+        by_name = {os.path.basename(str(f)): f for f in dataset.filenames}
+        order = [os.path.basename(line.strip()) for line in Path(query_order_file).read_text().splitlines() if line.strip()]
+        if len(by_name) != len(dataset.filenames) or set(order) != set(by_name) or len(order) != len(set(order)):
+            raise ValueError(
+                f"--query-order-file must list each of the {len(dataset.filenames)} query files exactly once "
+                f"(got {len(order)} lines, {len(set(order) & set(by_name))} matching)."
+            )
+        dataset.filenames = [by_name[name] for name in order]
+        print(f"Query order fixed from {query_order_file} (first: {order[0]})", flush=True)
 
     cached_batches: List[Tuple[torch.Tensor, List[Dict[str, Any]]]] = []
     query_ids: List[str] = []
@@ -412,6 +438,7 @@ def main() -> None:
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         max_examples=args.max_examples,
+        query_order_file=args.query_order_file,
     )
 
     result_rows: List[torch.Tensor] = []

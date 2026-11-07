@@ -1,0 +1,30 @@
+{
+  "retrieved_on": "2026-11-07",
+  "models": {
+    "stabilityai/stable-audio-open-1.0": {
+      "revision": "f21265c1e2710b3bd2386596943f0007f55f802e",
+      "files": {
+        "model.ckpt": {
+          "bytes": 4853997287,
+          "sha256": "6049ae92ec8362804cb4cb8a2845be93071439da2daff9997c285f8119d7ea40",
+          "local_sha256": "6049ae92ec8362804cb4cb8a2845be93071439da2daff9997c285f8119d7ea40",
+          "local_matches_upstream": true
+        },
+        "vae_model.ckpt": {
+          "bytes": 624474947,
+          "sha256": "771265f2e9a7fa9c3b7899be2d6a5a93954032e5e696edd62239ba7f1cd67116",
+          "local_sha256": "771265f2e9a7fa9c3b7899be2d6a5a93954032e5e696edd62239ba7f1cd67116",
+          "local_matches_upstream": true
+        }
+      }
+    },
+    "stanford-crfm/music-small-800k": {
+      "revision": "fa800530aa1126dd6b58b38f3bdb8fcec9c9d4f5",
+      "cached_revision": "fa800530aa1126dd6b58b38f3bdb8fcec9c9d4f5"
+    },
+    "t5-base": {
+      "revision": "a9723ea7f1b39c1eae772870f3b547bf6ef7e6c1",
+      "cached_revision": "a9723ea7f1b39c1eae772870f3b547bf6ef7e6c1"
+    }
+  }
+}

@@ -1,0 +1,46 @@
+# SAO IP scaled pilot — 50 artists (reduced from 100). Isolated under sao_ip_100/.
+# Band ratios ~8:8:5:1 scaled -> 18+18+11+3=50.
+
+n_sellers: 50
+tracks_per_seller: 50
+num_prompts: 200
+
+seller_cells:
+  - band: low
+    min_tracks: 10
+    max_tracks: 15
+    count: 18
+  - band: mid
+    min_tracks: 16
+    max_tracks: 25
+    count: 18
+  - band: high
+    min_tracks: 26
+    max_tracks: 50
+    count: 11
+  - band: extra_high
+    min_tracks: 51
+    max_tracks: null
+    count: 3
+
+dataset_root: dataset/small-20000
+audio_dir: dataset/small-20000/audio
+raw_tsv: dataset/small-20000/raw_30s.tsv
+meta_tsv: dataset/small-20000/raw.meta.tsv
+
+model_config: model_config_freeze_vae.json
+train_dataset_config: sao_ip_100/configs/train_dataset.json
+query_dataset_config: sao_ip_100/configs/query_dataset.json
+pretrained_ckpt_path: dataset/pretrained_model/model.ckpt
+pretransform_ckpt_path: dataset/pretrained_model/vae_model.ckpt
+
+outputs_dir: sao_ip_100/outputs
+selection_dir: sao_ip_100/outputs/selection
+models_dir: sao_ip_100/outputs/models
+generated_queries_dir: sao_ip_100/outputs/generated_queries
+prompts_json: sao_ip_100/outputs/prompts.json
+
+min_tracks_per_artist: 10
+coherence_floor: 0.4
+seed: 42
+max_epochs: 50

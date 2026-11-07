@@ -1,0 +1,2 @@
+tag,batch_size,proj_dim,damping,mean_spearman_lds,median_spearman,mean_pearson,median_pearson,mean_I_hat,median_I_hat,mean_seller_spearman,run_dir
+bs4_pd4096_d0.1,4,4096,0.1,0.02968044523181925,0.033033303330333025,0.18027666835716136,0.08823882056456335,2.63530422833266e-07,1.6371092383027555e-07,0.021466200981928883,/ocean/projects/mth240006p/xjiang6/stable-audio-tools/anticipation_ip_pilot/outputs/grid_search/logra_artist_epoch_sweep_pd4096_d0p1/epoch_0/bs4_pd4096_d0.1

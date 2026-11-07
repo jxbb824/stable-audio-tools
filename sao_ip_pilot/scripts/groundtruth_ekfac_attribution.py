@@ -19,7 +19,7 @@ from torch.utils.data import DataLoader, Dataset, Subset
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_DIFFUSION_INFLUENCE_ROOT = Path("/ocean/projects/mth240006p/xjiang6/diffusion-influence")
+DEFAULT_DIFFUSION_INFLUENCE_ROOT = REPO_ROOT.parent / "diffusion-influence"
 DIFFUSION_INFLUENCE_ROOT = Path(
     os.environ.get("DIFFUSION_INFLUENCE_ROOT", str(DEFAULT_DIFFUSION_INFLUENCE_ROOT))
 ).resolve()
@@ -143,6 +143,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--train-batch-size", type=int, default=10)
     parser.add_argument("--query-gradient-compression-bits", type=int, default=8, choices=[4, 8])
     parser.add_argument("--linear-layer-start-fraction", type=float, default=0.0)
+    parser.add_argument("--linear-layer-start-index", type=int, default=None)
+    parser.add_argument("--linear-layer-end-index", type=int, default=None)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--autocast-pretransform", action="store_true")
     parser.add_argument("--pre-encoded", action="store_true")
@@ -150,6 +152,16 @@ def parse_args() -> argparse.Namespace:
     args = parser.parse_args()
     if not 0.0 <= args.linear_layer_start_fraction < 1.0:
         raise ValueError("--linear-layer-start-fraction must be in [0.0, 1.0).")
+    if args.linear_layer_start_index is not None and args.linear_layer_start_index < 0:
+        raise ValueError("--linear-layer-start-index must be non-negative.")
+    if args.linear_layer_end_index is not None and args.linear_layer_end_index <= 0:
+        raise ValueError("--linear-layer-end-index must be positive.")
+    if (
+        args.linear_layer_start_index is not None
+        and args.linear_layer_end_index is not None
+        and args.linear_layer_start_index >= args.linear_layer_end_index
+    ):
+        raise ValueError("Linear-layer start index must be smaller than end index.")
     return args
 
 
@@ -280,6 +292,37 @@ def get_dataset_roots(dataset_config: Dict[str, Any]) -> List[str]:
             roots.append(str((REPO_ROOT / dataset_path).resolve()))
             roots.append(os.path.normpath(dataset_path))
     return roots
+
+
+def resolve_candidate_pool_paths(
+    candidate_pool_rows: Sequence[Dict[str, str]],
+    dataset_config: Dict[str, Any],
+) -> List[Dict[str, str]]:
+    """Resolve copied candidate manifests against the active dataset roots."""
+    dataset_roots = [Path(root) for root in get_dataset_roots(dataset_config)[::2]]
+    if not dataset_roots:
+        raise ValueError("Train dataset config must include at least one dataset path.")
+
+    resolved_rows: List[Dict[str, str]] = []
+    for row in candidate_pool_rows:
+        relpath = row.get("relpath", "")
+        candidates = [root / relpath for root in dataset_roots] if relpath else []
+        candidates.append(Path(row.get("path", "")))
+        resolved_path = next((path.resolve() for path in candidates if path.is_file()), None)
+        if resolved_path is None:
+            raise FileNotFoundError(
+                f"Could not resolve candidate track {row.get('track_id', '<unknown>')} "
+                f"with relpath={relpath!r} under dataset roots {dataset_roots}."
+            )
+        resolved_row = dict(row)
+        resolved_row["path"] = str(resolved_path)
+        if relpath:
+            for root in dataset_roots:
+                if (root / relpath).resolve() == resolved_path:
+                    resolved_row["dataset_root"] = str(root)
+                    break
+        resolved_rows.append(resolved_row)
+    return resolved_rows
 
 
 def build_train_dataset(
@@ -574,15 +617,24 @@ def batch_to_audio_regression_batch(
 def select_linear_params(
     model,
     start_fraction: float = 0.0,
-) -> Tuple[Dict[str, nn.Parameter], List[str]]:
+    start_index: Optional[int] = None,
+    end_index: Optional[int] = None,
+) -> Tuple[Dict[str, nn.Parameter], List[str], Tuple[int, int, int]]:
     module_entries: List[Tuple[str, nn.Linear]] = [
         (module_name, module)
         for module_name, module in model.named_modules()
         if isinstance(module, nn.Linear)
     ]
 
-    start_index = int(len(module_entries) * start_fraction)
-    selected_entries = module_entries[start_index:]
+    total_modules = len(module_entries)
+    resolved_start = int(total_modules * start_fraction) if start_index is None else start_index
+    resolved_end = total_modules if end_index is None else end_index
+    if not 0 <= resolved_start < resolved_end <= total_modules:
+        raise ValueError(
+            f"Invalid linear-layer range [{resolved_start}, {resolved_end}) for "
+            f"{total_modules} modules."
+        )
+    selected_entries = module_entries[resolved_start:resolved_end]
 
     params: Dict[str, nn.Parameter] = {}
     module_names: List[str] = []
@@ -600,7 +652,7 @@ def select_linear_params(
 
     if not params:
         raise RuntimeError("No trainable nn.Linear parameters were found in diffusion.model for EKFAC.")
-    return params, module_names
+    return params, module_names, (resolved_start, resolved_end, total_modules)
 
 
 def build_kfac_preconditioner(
@@ -740,6 +792,7 @@ def main() -> None:
         raise ValueError("Use either --ensemble-model-indices or --unwrapped-ckpt, not both.")
     output_dir = (REPO_ROOT / args.output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
+    train_dataset_config = deepcopy(load_json(train_dataset_config_path))
 
     if ensemble_pairs:
         reference_model_dir = ensemble_pairs[0][1]
@@ -752,6 +805,7 @@ def main() -> None:
     candidate_pool_rows = read_csv_rows(candidate_pool_path)
     if not candidate_pool_rows:
         raise RuntimeError(f"No candidate pool rows found in {candidate_pool_path}")
+    candidate_pool_rows = resolve_candidate_pool_paths(candidate_pool_rows, train_dataset_config)
 
     max_train_count = len(candidate_pool_rows)
     train_count = args.train_count if args.train_count is not None else max_train_count
@@ -778,7 +832,6 @@ def main() -> None:
         reference_model_config_path = model_config_path
     reference_model_config = load_json(reference_model_config_path)
 
-    train_dataset_config = deepcopy(load_json(train_dataset_config_path))
     train_dataset_config["drop_last"] = False
     train_dataset_config["random_crop"] = False
     resolved_train_dataset_config_path = output_dir / "resolved_train_dataset_config.json"
@@ -889,15 +942,18 @@ def main() -> None:
             cfg_dropout_prob=loss_cfg_dropout_prob,
             device=device,
         )
-        named_params, linear_module_names = select_linear_params(
+        named_params, linear_module_names, linear_module_range = select_linear_params(
             param_probe,
             start_fraction=args.linear_layer_start_fraction,
+            start_index=args.linear_layer_start_index,
+            end_index=args.linear_layer_end_index,
         )
         print(
             f"Selected {len(linear_module_names)} nn.Linear modules "
             f"({sum(param.numel() for param in named_params.values()):,} parameters) "
             f"with kfac_approx={args.kfac_approx} "
-            f"and linear_layer_start_fraction={args.linear_layer_start_fraction:.3f}"
+            f"and linear_layer_range=[{linear_module_range[0]}, {linear_module_range[1]})/"
+            f"{linear_module_range[2]}"
         )
 
         preconditioner = build_kfac_preconditioner(
@@ -970,6 +1026,11 @@ def main() -> None:
                 "cached_latents": bool(using_cached_latents),
                 "kfac_approx": args.kfac_approx,
                 "linear_layer_start_fraction": float(args.linear_layer_start_fraction),
+                "linear_layer_range": {
+                    "start": int(linear_module_range[0]),
+                    "end": int(linear_module_range[1]),
+                    "total": int(linear_module_range[2]),
+                },
             }
         )
 
@@ -1077,6 +1138,8 @@ def main() -> None:
             "parameter_selection": {
                 "type": "diffusion.model nn.Linear parameters",
                 "linear_layer_start_fraction": float(args.linear_layer_start_fraction),
+                "linear_layer_start_index": args.linear_layer_start_index,
+                "linear_layer_end_index": args.linear_layer_end_index,
             },
             "train_axis_manifest": str(train_axis_manifest_path),
             "query_axis_manifest": str(query_axis_manifest_path),

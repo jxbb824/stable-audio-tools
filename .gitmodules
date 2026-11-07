@@ -1,3 +1,6 @@
+[submodule "D-TRAK"]
+	path = D-TRAK
+	url = https://github.com/sail-sg/D-TRAK.git
 [submodule "third_party/loraw"]
 	path = third_party/loraw
 	url = https://github.com/NeuralNotW0rk/LoRAW.git

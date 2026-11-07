@@ -1,0 +1,71 @@
+{
+  "model_config": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/model_config_freeze_vae.json",
+  "train_dataset_config": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/configs/train_dataset.json",
+  "query_dataset_config": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/configs/query_dataset.json",
+  "resolved_train_dataset_config": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/dtrak_attribution_6h/resolved_train_dataset_config.json",
+  "resolved_query_dataset_config": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/dtrak_attribution_6h/resolved_query_dataset_config.json",
+  "models_root": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/models",
+  "reference_model_index": null,
+  "reference_model_dir": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/models/0",
+  "ensemble_model_indices": [
+    null
+  ],
+  "ensemble_member_count": 1,
+  "ensemble_reduction": "mean",
+  "full_model_dir": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/models/0",
+  "unwrapped_ckpt": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/models/0/model.ckpt",
+  "candidate_pool_csv": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/models/0/candidate_pool.csv",
+  "train_include_paths_file": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/dtrak_attribution_6h/candidate_pool_paths.txt",
+  "query_dir": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/generated_queries",
+  "train_count": 1120,
+  "query_count": 200,
+  "batch_size": 2,
+  "num_workers": 4,
+  "device": "cuda:0",
+  "proj_dim": 2048,
+  "used_dim": 2048,
+  "K": 10,
+  "t_strategy": "uniform",
+  "num_train_steps": 1000,
+  "f": "loss",
+  "cfg_dropout_prob": 0.0,
+  "lambda_reg": 0.1,
+  "param_regex": "",
+  "member_metadata": [
+    {
+      "member_position": 0,
+      "model_index": null,
+      "model_dir": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/models/0",
+      "checkpoint_path": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/models/0/model.ckpt",
+      "output_dir": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/dtrak_attribution_6h/members/single",
+      "raw_score_path": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/dtrak_attribution_6h/members/single/scores_query_x_train_raw.memmap",
+      "raw_score_shape": [
+        200,
+        1117
+      ]
+    }
+  ],
+  "train_feature_path_raw": null,
+  "train_feature_meta_path_raw": null,
+  "query_feature_path": null,
+  "query_feature_meta_path": null,
+  "score_path_raw": null,
+  "score_meta_path_raw": null,
+  "score_path_query_x_train": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/dtrak_attribution_6h/scores_query_x_train.memmap",
+  "score_meta_path_query_x_train": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/dtrak_attribution_6h/scores_query_x_train.memmap.meta.json",
+  "score_path_train_x_query_pt": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/dtrak_attribution_6h/scores_train_x_query.pt",
+  "train_axis_manifest": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/dtrak_attribution_6h/train_axis_manifest.csv",
+  "query_axis_manifest": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/dtrak_attribution_6h/query_axis_manifest.csv",
+  "raw_score_shape": [
+    200,
+    1117
+  ],
+  "final_score_shape_query_x_train": [
+    200,
+    1117
+  ],
+  "final_score_shape_train_x_query": [
+    1117,
+    200
+  ]
+}

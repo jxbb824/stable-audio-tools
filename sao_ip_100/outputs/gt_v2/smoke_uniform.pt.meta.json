@@ -1,0 +1,44 @@
+{
+  "output_path": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/gt_v2/smoke_uniform.pt",
+  "shape": [
+    1,
+    4
+  ],
+  "models_root": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/models",
+  "model_indices": [
+    0
+  ],
+  "model_dirs": [
+    "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/models/0"
+  ],
+  "query_dataset_config": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/configs/query_dataset.json",
+  "reference_model_config": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/models/0/resolved_model_config.json",
+  "query_ids_path": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/gt_v2/smoke_uniform.pt.query_ids.txt",
+  "model_ids_path": "/ocean/projects/mth260005p/xjiang6/stable-audio-tools/sao_ip_100/outputs/gt_v2/smoke_uniform.pt.model_ids.txt",
+  "num_queries": 4,
+  "batch_size": 2,
+  "num_workers": 4,
+  "device": "cuda:0",
+  "seed": 42,
+  "e_seed": 0,
+  "K": 10,
+  "t_strategy": "uniform",
+  "selected_timesteps": [
+    0,
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+  ],
+  "num_train_steps": 1000,
+  "f": "loss",
+  "cfg_dropout_prob": 0.0,
+  "max_examples": 4,
+  "pretransform_ckpt_path": null,
+  "remove_pretransform_weight_norm": "none"
+}

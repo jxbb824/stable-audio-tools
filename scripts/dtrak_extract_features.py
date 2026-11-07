@@ -6,7 +6,7 @@ import json
 import random
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import torch
@@ -78,6 +78,30 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model-id", type=int, default=0)
     parser.add_argument("--pre-encoded", action="store_true")
     parser.add_argument("--no-pre-encoded", action="store_true")
+    parser.add_argument(
+        "--projection-mode",
+        choices=["full", "chunked"],
+        default="full",
+        help=(
+            "Project one full padded gradient matrix (legacy behavior), or project "
+            "parameter chunks independently and sum their sketches."
+        ),
+    )
+    parser.add_argument(
+        "--projection-chunk-numel",
+        type=int,
+        default=64 * 1024 * 1024,
+        help="Maximum number of gradient elements per chunk in chunked projection mode.",
+    )
+    parser.add_argument(
+        "--projection-kernel-batch-size",
+        type=int,
+        choices=[8, 16, 32],
+        default=8,
+        help="Padded fast_jl batch size used by each chunked projection call.",
+    )
+    parser.add_argument("--num-shards", type=int, default=1)
+    parser.add_argument("--shard-index", type=int, default=0)
     return parser.parse_args()
 
 
@@ -115,6 +139,81 @@ def resolve_num_examples(loader: torch.utils.data.DataLoader, max_examples: Opti
         return len(loader.dataset)  # type: ignore[arg-type]
     except (TypeError, AttributeError) as exc:
         raise ValueError("Iterable dataset detected. Please pass --max-examples.") from exc
+
+
+def shard_dataloader_by_complete_batches(
+    loader: torch.utils.data.DataLoader,
+    batch_size: int,
+    num_workers: int,
+    max_examples: Optional[int],
+    num_shards: int,
+    shard_index: int,
+):
+    """Create a contiguous dataset shard whose boundaries preserve full batches.
+
+    D-TRAK resets its diffusion-noise seed for every batch. Splitting only between
+    original batches therefore preserves each example's batch position and noise
+    draw relative to a single-process run with the same batch size.
+    """
+    if num_shards <= 0:
+        raise ValueError("--num-shards must be positive.")
+    if not 0 <= shard_index < num_shards:
+        raise ValueError("--shard-index must be in [0, --num-shards).")
+    if batch_size <= 0:
+        raise ValueError("--batch-size must be positive.")
+
+    try:
+        dataset = loader.dataset
+        dataset_size = len(dataset)  # type: ignore[arg-type]
+    except (TypeError, AttributeError) as exc:
+        raise ValueError("Sharded extraction requires a map-style dataset.") from exc
+
+    # Local audio scans use os.scandir order, which is not a formal ordering
+    # guarantee. Every worker must derive the same global axis before slicing.
+    if hasattr(dataset, "filenames"):
+        dataset.filenames = sorted(dataset.filenames)
+    else:
+        raise ValueError(
+            "Sharded extraction requires a dataset with an explicit filenames axis."
+        )
+
+    global_num_examples = dataset_size
+    if max_examples is not None:
+        if max_examples <= 0:
+            raise ValueError("--max-examples must be positive when provided.")
+        global_num_examples = min(global_num_examples, max_examples)
+
+    total_batches = (global_num_examples + batch_size - 1) // batch_size
+    base_batches, extra_batches = divmod(total_batches, num_shards)
+    shard_batch_count = base_batches + (1 if shard_index < extra_batches else 0)
+    shard_start_batch = shard_index * base_batches + min(shard_index, extra_batches)
+    shard_end_batch = shard_start_batch + shard_batch_count
+    global_start_index = min(shard_start_batch * batch_size, global_num_examples)
+    global_end_index = min(shard_end_batch * batch_size, global_num_examples)
+    shard_indices = range(global_start_index, global_end_index)
+
+    subset = torch.utils.data.Subset(dataset, shard_indices)
+    sharded_loader = torch.utils.data.DataLoader(
+        subset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        persistent_workers=num_workers > 0,
+        pin_memory=loader.pin_memory,
+        drop_last=False,
+        collate_fn=loader.collate_fn,
+    )
+    shard_info = {
+        "num_shards": int(num_shards),
+        "shard_index": int(shard_index),
+        "global_num_examples": int(global_num_examples),
+        "global_start_index": int(global_start_index),
+        "global_end_index": int(global_end_index),
+        "shard_num_examples": int(global_end_index - global_start_index),
+        "batch_size": int(batch_size),
+        "dataset_order": "sorted_filenames",
+    }
+    return sharded_loader, shard_info
 
 
 def select_timesteps(k: int, num_train_steps: int, strategy: str) -> List[int]:
@@ -240,10 +339,129 @@ def create_projector(
     }
     sig = inspect.signature(CudaProjector.__init__)
     if "max_batch_size" in sig.parameters:
-        # fast_jl CUDA kernels only exist for batch sizes that are multiples of
-        # 16 (project_normal_16, _32, …).  Clamp to at least 16.
-        kwargs["max_batch_size"] = max(16, int(max_batch_size))
+        if max_batch_size not in (8, 16, 32):
+            raise ValueError("fast_jl max_batch_size must be one of 8, 16, or 32.")
+        kwargs["max_batch_size"] = int(max_batch_size)
     return CudaProjector(**kwargs)
+
+
+GradientSlice = Tuple[int, int, int]
+
+
+def build_gradient_chunks(
+    param_list: Sequence[torch.Tensor],
+    max_chunk_numel: int,
+) -> List[Tuple[List[GradientSlice], int]]:
+    """Partition a flattened gradient without dropping or duplicating elements.
+
+    A single parameter may cross chunk boundaries.  Each slice is represented as
+    ``(parameter_index, flat_start, flat_end)`` and chunks preserve the exact
+    parameter/element order used by the legacy full-vector implementation.
+    """
+    if max_chunk_numel <= 0:
+        raise ValueError("--projection-chunk-numel must be positive.")
+
+    chunks: List[Tuple[List[GradientSlice], int]] = []
+    current_slices: List[GradientSlice] = []
+    current_numel = 0
+
+    for param_index, parameter in enumerate(param_list):
+        param_numel = parameter.numel()
+        flat_start = 0
+        while flat_start < param_numel:
+            available = max_chunk_numel - current_numel
+            take = min(available, param_numel - flat_start)
+            current_slices.append((param_index, flat_start, flat_start + take))
+            current_numel += take
+            flat_start += take
+
+            if current_numel == max_chunk_numel:
+                chunks.append((current_slices, current_numel))
+                current_slices = []
+                current_numel = 0
+
+    if current_slices:
+        chunks.append((current_slices, current_numel))
+
+    expected_numel = sum(parameter.numel() for parameter in param_list)
+    observed_numel = sum(chunk_numel for _, chunk_numel in chunks)
+    if observed_numel != expected_numel:
+        raise RuntimeError(
+            f"Gradient chunk coverage mismatch: expected {expected_numel}, got {observed_numel}."
+        )
+    return chunks
+
+
+def create_chunked_projectors(
+    chunks: Sequence[Tuple[List[GradientSlice], int]],
+    proj_dim: int,
+    seed: int,
+    device: torch.device,
+    kernel_batch_size: int,
+):
+    """Create independent Gaussian JL projectors for consecutive gradient chunks."""
+    rng = np.random.default_rng(seed)
+    chunk_seeds = [
+        int(value)
+        for value in rng.integers(0, np.iinfo(np.int32).max, size=len(chunks), dtype=np.int64)
+    ]
+    projectors = [
+        create_projector(
+            grad_dim=chunk_numel,
+            proj_dim=proj_dim,
+            seed=chunk_seed,
+            device=device,
+            max_batch_size=kernel_batch_size,
+        )
+        for (_, chunk_numel), chunk_seed in zip(chunks, chunk_seeds)
+    ]
+    return projectors, chunk_seeds
+
+
+def project_gradient_chunks(
+    grads: Sequence[torch.Tensor],
+    chunks: Sequence[Tuple[List[GradientSlice], int]],
+    projectors: Sequence[Any],
+    proj_dim: int,
+    model_id: int,
+    device: torch.device,
+    kernel_batch_size: int,
+) -> torch.Tensor:
+    """Project one full-model gradient using bounded-memory parameter chunks.
+
+    If ``g = [g_1, ..., g_C]`` and each chunk uses an independent Gaussian
+    matrix ``P_c``, this computes ``sum_c g_c P_c``.  This is exactly a Gaussian
+    JL projection of the concatenated full gradient; only its random draw differs
+    from the legacy monolithic projector.
+    """
+    if len(chunks) != len(projectors):
+        raise ValueError("Chunk/projector count mismatch.")
+
+    projected = torch.zeros(proj_dim, dtype=torch.float32, device=device)
+    for (chunk_slices, chunk_numel), projector in zip(chunks, projectors):
+        # fast_jl exposes kernels for fixed batch sizes.  Only row zero contains
+        # this sample; zero padding makes the remaining projected rows irrelevant.
+        chunk_input = torch.zeros(
+            (kernel_batch_size, chunk_numel),
+            dtype=torch.float32,
+            device=device,
+        )
+        destination_offset = 0
+        for param_index, flat_start, flat_end in chunk_slices:
+            source = grads[param_index].detach().reshape(-1)[flat_start:flat_end]
+            next_offset = destination_offset + source.numel()
+            chunk_input[0, destination_offset:next_offset].copy_(source)
+            destination_offset = next_offset
+        if destination_offset != chunk_numel:
+            raise RuntimeError(
+                f"Chunk fill mismatch: expected {chunk_numel}, wrote {destination_offset}."
+            )
+
+        chunk_projection = projector.project(chunk_input, model_id=model_id)
+        projected.add_(chunk_projection[0].to(torch.float32))
+        del chunk_input, chunk_projection
+
+    return projected
 
 
 def main() -> None:
@@ -280,7 +498,40 @@ def main() -> None:
         shuffle=False,
     )
 
-    num_examples = resolve_num_examples(dataloader, args.max_examples)
+    if args.num_shards == 1:
+        if args.shard_index != 0:
+            raise ValueError("--shard-index must be 0 when --num-shards is 1.")
+        num_examples = resolve_num_examples(dataloader, args.max_examples)
+        shard_info = {
+            "num_shards": 1,
+            "shard_index": 0,
+            "global_num_examples": int(num_examples),
+            "global_start_index": 0,
+            "global_end_index": int(num_examples),
+            "shard_num_examples": int(num_examples),
+            "batch_size": int(args.batch_size),
+        }
+    else:
+        dataloader, shard_info = shard_dataloader_by_complete_batches(
+            loader=dataloader,
+            batch_size=args.batch_size,
+            num_workers=args.num_workers,
+            max_examples=args.max_examples,
+            num_shards=args.num_shards,
+            shard_index=args.shard_index,
+        )
+        num_examples = shard_info["shard_num_examples"]
+        if num_examples == 0:
+            raise ValueError(
+                f"Shard {args.shard_index}/{args.num_shards} is empty; use fewer shards."
+            )
+        print(
+            "Using contiguous batch-preserving shard "
+            f"{args.shard_index + 1}/{args.num_shards}: "
+            f"global examples [{shard_info['global_start_index']}, "
+            f"{shard_info['global_end_index']})",
+            flush=True,
+        )
     selected_timesteps = select_timesteps(args.K, args.num_train_steps, args.t_strategy)
 
     diffusion = create_model_from_config(model_config)
@@ -322,13 +573,6 @@ def main() -> None:
     used_dim = args.used_dim if args.used_dim is not None else args.proj_dim
     if used_dim > args.proj_dim:
         raise ValueError("--used-dim cannot be larger than --proj-dim.")
-    projector = create_projector(
-        grad_dim=grad_dim,
-        proj_dim=args.proj_dim,
-        seed=args.seed,
-        device=device,
-        max_batch_size=args.batch_size,
-    )
 
     # ---- Gradient computation strategy -----------------------------------------
     # We use standard torch.autograd.grad instead of vmap+grad so that
@@ -344,6 +588,40 @@ def main() -> None:
     # Collect the actual parameter tensors we want gradients for, in a stable order.
     param_list = [p for n, p in model.named_parameters() if n in selected_param_names]
     param_names = [n for n, p in model.named_parameters() if n in selected_param_names]
+
+    projector = None
+    gradient_chunks: List[Tuple[List[GradientSlice], int]] = []
+    chunk_projectors: List[Any] = []
+    chunk_seeds: List[int] = []
+    if args.projection_mode == "full":
+        projector = create_projector(
+            grad_dim=grad_dim,
+            proj_dim=args.proj_dim,
+            seed=args.seed,
+            device=device,
+            # The legacy path below pads every input to a multiple of 16.
+            max_batch_size=16 if args.batch_size <= 16 else 32,
+        )
+    else:
+        gradient_chunks = build_gradient_chunks(
+            param_list=param_list,
+            max_chunk_numel=args.projection_chunk_numel,
+        )
+        chunk_projectors, chunk_seeds = create_chunked_projectors(
+            chunks=gradient_chunks,
+            proj_dim=args.proj_dim,
+            seed=args.seed,
+            device=device,
+            kernel_batch_size=args.projection_kernel_batch_size,
+        )
+        chunk_sizes = [chunk_numel for _, chunk_numel in gradient_chunks]
+        max_chunk_gib = max(chunk_sizes) * args.projection_kernel_batch_size * 4 / 1024**3
+        print(
+            f"Using chunked Gaussian projection: {len(gradient_chunks)} chunks, "
+            f"kernel_batch_size={args.projection_kernel_batch_size}, "
+            f"largest padded input={max_chunk_gib:.2f} GiB",
+            flush=True,
+        )
 
     feature_path = Path(args.feature_path)
     feature_path.parent.mkdir(parents=True, exist_ok=True)
@@ -395,13 +673,19 @@ def main() -> None:
         }
 
         batch_size_actual = diffusion_input.shape[0]
-        projected_batch_size = batch_size_actual
-        if projected_batch_size % 16 != 0:
-            projected_batch_size = ((projected_batch_size // 16) + 1) * 16
+        if args.projection_mode == "full":
+            projected_batch_size = batch_size_actual
+            if projected_batch_size % 16 != 0:
+                projected_batch_size = ((projected_batch_size // 16) + 1) * 16
 
-        # Pre-allocate emb on GPU using the padded projector batch size up front.
-        # This avoids a second giant allocation on the final partial batch.
-        emb = torch.zeros(projected_batch_size, grad_dim, device=device)
+            # Pre-allocate emb on GPU using the padded projector batch size up front.
+            # This avoids a second giant allocation on the final partial batch.
+            emb = torch.zeros(projected_batch_size, grad_dim, device=device)
+        else:
+            # Projection is linear, so averaging K projected timestep gradients is
+            # equivalent to projecting their average. Projecting immediately avoids
+            # materializing the 16 x full-gradient matrix.
+            emb = torch.zeros(batch_size_actual, args.proj_dim, device=device)
 
         # Disable grad for all params once; re-enable only for selected ones.
         for p in model.parameters():
@@ -459,12 +743,25 @@ def main() -> None:
                 loss = loss_from_prediction(prediction, targets[si : si + 1], args.f)
 
                 grads = torch.autograd.grad(loss, param_list)
-                # Accumulate directly into pre-allocated emb (in-place, no extra tensor)
-                offset = 0
-                for g in grads:
-                    numel = g.numel()
-                    emb[si, offset : offset + numel].add_(g.detach().flatten())
-                    offset += numel
+                if args.projection_mode == "full":
+                    # Accumulate directly into pre-allocated emb (in-place, no extra tensor).
+                    offset = 0
+                    for g in grads:
+                        numel = g.numel()
+                        emb[si, offset : offset + numel].add_(g.detach().flatten())
+                        offset += numel
+                else:
+                    emb[si].add_(
+                        project_gradient_chunks(
+                            grads=grads,
+                            chunks=gradient_chunks,
+                            projectors=chunk_projectors,
+                            proj_dim=args.proj_dim,
+                            model_id=args.model_id,
+                            device=device,
+                            kernel_batch_size=args.projection_kernel_batch_size,
+                        )
+                    )
                 del prediction, loss, grads
 
             _elapsed_ts = _time.time() - _t_ts
@@ -474,7 +771,9 @@ def main() -> None:
 
         emb.div_(float(len(selected_timesteps)))
         actual_bs = batch_size_actual
-        emb = projector.project(emb, model_id=args.model_id)[:actual_bs]
+        if args.projection_mode == "full":
+            assert projector is not None
+            emb = projector.project(emb, model_id=args.model_id)[:actual_bs]
         if used_dim != args.proj_dim:
             emb[:, used_dim:] = 0
 
@@ -492,6 +791,11 @@ def main() -> None:
         print(f"saved={saved}/{num_examples} | batch {_elapsed_batch:.1f}s | "
               f"total {_elapsed_total:.0f}s | ETA {_eta:.0f}s ({_eta/60:.1f}min)",
               flush=True)
+        if device.type == "cuda":
+            print(
+                f"peak_cuda_memory={torch.cuda.max_memory_allocated(device)/1024**3:.2f} GiB",
+                flush=True,
+            )
 
     dstore.flush()
     with open(ids_path, "w", encoding="utf-8") as handle:
@@ -516,6 +820,23 @@ def main() -> None:
         "param_regex": args.param_regex,
         "grad_dim": int(grad_dim),
         "pre_encoded": bool(pre_encoded),
+        "projection_mode": args.projection_mode,
+        "projection_chunk_numel": (
+            int(args.projection_chunk_numel) if args.projection_mode == "chunked" else None
+        ),
+        "projection_kernel_batch_size": (
+            int(args.projection_kernel_batch_size) if args.projection_mode == "chunked" else None
+        ),
+        "projection_chunk_sizes": [
+            int(chunk_numel) for _, chunk_numel in gradient_chunks
+        ],
+        "projection_chunk_seeds": chunk_seeds,
+        "peak_cuda_memory_gib": (
+            float(torch.cuda.max_memory_allocated(device) / 1024**3)
+            if device.type == "cuda"
+            else None
+        ),
+        "shard": shard_info,
     }
     with open(meta_path, "w", encoding="utf-8") as handle:
         json.dump(meta, handle, indent=2, ensure_ascii=True)

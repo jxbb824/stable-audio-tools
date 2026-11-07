@@ -1,0 +1,5 @@
+{
+  "python": "3.10.20",
+  "platform": "linux",
+  "note": "Observed installed packages, not a solved portable lockfile. Editable/VCS sources require the dependency records in README. CUDA wheel versions are retained in package versions."
+}
