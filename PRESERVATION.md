@@ -10,8 +10,10 @@ It is separate from the NameDrop/SA3 Shapley experiments in the neighboring
 The public HF model upload is complete: all 473 planned files are present with
 matching sizes, and all 182 weight files match their local upload SHA-256 records.
 See [the final verification](preservation/public_upload_verification.json).
-The private HF dataset repository has not been created or uploaded. The original
-files remain in place; the training-data portion of the backup is still pending.
+The private HF dataset is also complete: all 2,901 payload files (10.65 GiB)
+passed size and hash verification, and anonymous access is denied. See
+[the private-upload verification](preservation/private_upload_verification.json).
+The original files remain in place.
 
 ## Where to find things
 
@@ -19,12 +21,12 @@ files remain in place; the training-data portion of the backup is still pending.
 | --- | --- | --- |
 | [GitHub archive branch](https://github.com/jxbb824/stable-audio-tools/tree/archive/credit-worth-20261107) | Source, experiment configs, scoring/analysis code, lightweight numerical results and figures, this guide | Public; pushed |
 | [HF **model** repository `xirui824/credit-worth-models`](https://huggingface.co/xirui824/credit-worth-models) | Trained full and LOCO weights, the five symbolic training-stage checkpoints, three audio replicate weights, model architecture configs | Public; complete and verified |
-| Planned HF **dataset** repository `xirui824/credit-worth-artifacts` | Selected training data, exact generated evaluation examples, selection/axis manifests, raw numerical arrays, fit provenance, submitted manuscript | Private |
+| [HF **dataset** repository `xirui824/credit-worth-artifacts`](https://huggingface.co/datasets/xirui824/credit-worth-artifacts) | Selected training data, exact generated evaluation examples, selection/axis manifests, raw numerical arrays, fit provenance, submitted manuscript | Private; complete and verified |
 | Upstream Hugging Face / GitHub repositories | Downloadable base weights, tokenizers, encoders, source dependencies | Retrieved again when restoring |
 
 Both HF repositories use paths **relative to this repository root**.
 Downloading them into the same checkout will reconstruct the expected layout.
-The manuscript is the one exception: its planned archive path is
+The manuscript is the one exception: its archive path is
 `paper/submitted_manuscript.pdf`.
 
 The precise file allocation is in [preservation/inventory.csv](preservation/inventory.csv).
@@ -32,8 +34,10 @@ Its columns record source path, destination, future repository-relative path,
 byte size, purpose, duplicate alias, and SHA-256 where measured.
 [storage_summary.json](preservation/storage_summary.json) totals the categories;
 [github_paths.txt](preservation/github_paths.txt) lists the files selected for Git.
-Large HF files are inventoried by size at this stage. A size match is not a
-transfer-integrity check; their hashes must be checked during the eventual upload.
+The inventory records the original allocation and sizes. The final upload
+reports record remote integrity checks; every retained public weight and private
+payload was checked against its upload hash. The private repository additionally
+contains `archive_manifest.jsonl` with per-file sizes and SHA-256 checksums.
 
 The first real upload measurement is saved in
 [preservation/transfer_probe.json](preservation/transfer_probe.json):
@@ -61,7 +65,7 @@ The symbolic full model's root `model.safetensors` and
 `full_model/model.safetensors` are byte-identical to checkpoint `4/model.safetensors`.
 Their SHA-256 was checked:
 `24e6ac41eba15d32b6958add921627e5b6e9c5997d5b1de6cac01d946e1195da`.
-Only one copy is planned for HF; restore the two aliases before using scripts
+Only one copy is retained on HF; restore the two aliases before using scripts
 that expect the final model in those other locations. Keep epochs 0–4 because
 the attribution workflow may need the checkpoint ensemble, not just the final fit.
 
@@ -90,8 +94,8 @@ GitHub warns above 50 MiB per file and blocks ordinary Git files above 100 MiB.
 The selected Git payload has no model weights, training recordings, or large
 binary feature arrays. HF's free private allowance is currently 100 GB, enough
 for this private payload if the account has sufficient unused quota. Public
-storage on a free HF account is best-effort: do not treat the 398 GiB upload as
-guaranteed until the account's actual allowance is confirmed.
+storage on a free HF account is best-effort. The current public and private
+payloads have both been uploaded and verified.
 Sources: [GitHub file limits](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github),
 [HF storage limits](https://huggingface.co/docs/hub/storage-limits).
 
@@ -211,24 +215,23 @@ catalogs for a fixed query.
 The final PDF's held-out results (Table 7), concentration calculations, and
 bootstrap intervals require additional analysis code. That code was **not found
 in the experiment source directories** during this preservation pass. The exact
-input tables are retained and the submitted manuscript is planned for the
-private archive; this guide does not claim those later analyses were independently
+input tables and submitted manuscript are retained in the private archive;
+this guide does not claim those later analyses were independently
 reproduced. No new training, GPU scoring, or new held-out experiment was run.
 
 ## Restore the repository and data
 
-After the required HF uploads have completed (the private repository is still
-pending):
+The repositories above are now populated. With access to the private dataset:
 
 ```bash
 git clone --branch archive/credit-worth-20261107 --recurse-submodules \
   https://github.com/jxbb824/stable-audio-tools.git
 cd stable-audio-tools
 
-# These two destinations are planned; these commands require completed uploads.
-hf download xirui824/credit-worth-models --local-dir .
+# Exclude repository-level metadata so it does not overwrite the Git checkout.
+hf download xirui824/credit-worth-models --local-dir . --exclude README.md .gitattributes
 hf auth login  # use a read token authorized for the private dataset
-hf download xirui824/credit-worth-artifacts --repo-type dataset --local-dir .
+hf download xirui824/credit-worth-artifacts --repo-type dataset --local-dir . --exclude README.md .gitattributes
 
 # Restore the two identical symbolic final-model aliases.
 cp anticipation_ip_pilot/outputs/models/full-selected/4/model.safetensors \

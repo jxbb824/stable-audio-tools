@@ -1,0 +1,15 @@
+{
+  "repo": "xirui824/credit-worth-artifacts",
+  "repo_type": "dataset",
+  "private": true,
+  "anonymous_access_denied": true,
+  "commit": "d2a6522c0f2fef7a2f2152d96e339052b34057b5",
+  "verified_files": 2901,
+  "verified_bytes": 11438517656,
+  "remote_file_count": 2904,
+  "missing_count": 0,
+  "size_mismatch_count": 0,
+  "hash_mismatch_count": 0,
+  "complete": true,
+  "checked_utc": "2026-11-08T00:55:35.802968+00:00"
+}
