@@ -1,5 +1,5 @@
 {
-  "status": "GitHub archive branch published; first public-model upload verified; remainder uploading; private data not uploaded",
+  "status": "GitHub archive published; all 473 public model/config files uploaded and verified; private data not uploaded",
   "base_commit": "0bc4c4fa51925aae2c99788a2738b71d746aaf13",
   "github_branch": "archive/credit-worth-20261107",
   "planned_hf_public_model_repo": "xirui824/credit-worth-models",
@@ -39,5 +39,6 @@
     "SHA-256 is populated for small GitHub files only; large payload hashing belongs to transfer verification."
   ],
   "transfer_probe": "transfer_probe.json",
-  "github_published_commit": "385bf3593ba0c67c29859f62b7e0c01e90742b7f"
+  "github_published_commit": "385bf3593ba0c67c29859f62b7e0c01e90742b7f",
+  "public_upload_verification": "public_upload_verification.json"
 }

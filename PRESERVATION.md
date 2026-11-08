@@ -7,18 +7,18 @@ It is separate from the NameDrop/SA3 Shapley experiments in the neighboring
 `name-free-attribution` repository.
 
 **Status, November 7, 2026:** the preservation branch is published on GitHub.
-The public HF model repository is created, and the 4.52 GiB SAO-50 full-model
-checkpoint has been uploaded and verified by size and SHA-256. Upload of the
-remaining public-model inventory is in progress with resume support. The private
-HF dataset repository has not been created or uploaded. The original files
-remain in place; this is not yet a complete remote backup.
+The public HF model upload is complete: all 473 planned files are present with
+matching sizes, and all 182 weight files match their local upload SHA-256 records.
+See [the final verification](preservation/public_upload_verification.json).
+The private HF dataset repository has not been created or uploaded. The original
+files remain in place; the training-data portion of the backup is still pending.
 
 ## Where to find things
 
 | Location | Contents | Visibility |
 | --- | --- | --- |
 | [GitHub archive branch](https://github.com/jxbb824/stable-audio-tools/tree/archive/credit-worth-20261107) | Source, experiment configs, scoring/analysis code, lightweight numerical results and figures, this guide | Public; pushed |
-| [HF **model** repository `xirui824/credit-worth-models`](https://huggingface.co/xirui824/credit-worth-models) | Trained full and LOCO weights, the five symbolic training-stage checkpoints, three audio replicate weights, model architecture configs | Public; upload in progress |
+| [HF **model** repository `xirui824/credit-worth-models`](https://huggingface.co/xirui824/credit-worth-models) | Trained full and LOCO weights, the five symbolic training-stage checkpoints, three audio replicate weights, model architecture configs | Public; complete and verified |
 | Planned HF **dataset** repository `xirui824/credit-worth-artifacts` | Selected training data, exact generated evaluation examples, selection/axis manifests, raw numerical arrays, fit provenance, submitted manuscript | Private |
 | Upstream Hugging Face / GitHub repositories | Downloadable base weights, tokenizers, encoders, source dependencies | Retrieved again when restoring |
 

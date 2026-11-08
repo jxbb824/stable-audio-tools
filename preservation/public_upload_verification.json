@@ -1,0 +1,16 @@
+{
+  "checked_utc": "2026-11-08T00:44:54.742105+00:00",
+  "repo": "xirui824/credit-worth-models",
+  "commit": "41a07b635e99d6536e8fa82f7668d3257820e7a7",
+  "planned_files": 473,
+  "remote_files": 475,
+  "weights": 182,
+  "logical_bytes": 427568278909,
+  "missing": [],
+  "size_mismatches": [],
+  "sha256_mismatches": [],
+  "sha256_unavailable": [],
+  "complete": true,
+  "private_dataset_uploaded": false,
+  "completion_note": "All weights were uploaded by Slurm job 50319320. Its final configuration-file phase hit HTTP 429; the remaining 65 JSON files were subsequently committed in two API batches and the complete public inventory was verified."
+}
